@@ -5,6 +5,9 @@ import OrdemServico from './pages/OrdemServico'
 import NovaOS from './pages/NovaOS'
 import Historico from './pages/Historico'
 import Configuracoes from './pages/Configuracoes'
+import { exportarPlanilha } from './lib/exportar'
+
+// dentro da nav, no final
 
 export default function App() {
   return (
@@ -16,6 +19,13 @@ export default function App() {
           <NavLink to="/os" className={({ isActive }) => isActive ? 'font-bold text-blue-600' : 'text-gray-600'}>Ordens de Serviço</NavLink>
           <NavLink to="/historico" className={({ isActive }) => isActive ? 'font-bold text-blue-600' : 'text-gray-600'}>Histórico</NavLink>
           <NavLink to="/configuracoes" className={({ isActive }) => isActive ? 'font-bold text-blue-600' : 'text-gray-600'}>Configurações</NavLink>
+          <button
+            onClick={exportarPlanilha}
+            className="ml-auto text-sm text-gray-600 hover:text-blue-600 border px-3 py-1 rounded-lg hover:border-blue-600 transition-colors"
+          >
+            ↓ Exportar
+          </button>
+
         </nav>
         <main className="p-6">
           <Routes>
