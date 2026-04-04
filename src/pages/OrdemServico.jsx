@@ -1,28 +1,229 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle
-} from '../components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '../components/ui/select'
 
-function OSModal({ os, onAtualizado }) {
+const S = {
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+  },
+  h1: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '24px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+  },
+  btnPrimary: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '7px',
+    padding: '9px 18px',
+    fontSize: '13px',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    transition: 'background 0.15s',
+  },
+  btnSecondary: {
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontFamily: 'DM Sans, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  btnDanger: {
+    background: 'transparent',
+    color: 'var(--danger)',
+    border: 'none',
+    fontSize: '12px',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif',
+    padding: '4px 8px',
+    borderRadius: '4px',
+  },
+  input: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    transition: 'border 0.15s',
+  },
+  label: {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: 'var(--text-muted)',
+    marginBottom: '5px',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+  },
+  select: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    cursor: 'pointer',
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+  },
+  modal: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '12px',
+    padding: '28px',
+    width: '100%',
+    maxWidth: '520px',
+    maxHeight: '90vh',
+    overflowY: 'auto',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  modalTitle: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '18px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+  },
+  tabs: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '24px',
+  },
+  grid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+    gap: '16px',
+  },
+  card: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '10px',
+    padding: '18px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    boxShadow: 'var(--shadow)',
+  },
+  badge: (color) => ({
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.04em',
+    background: color === 'amber' ? 'rgba(193,127,36,0.12)' : 'rgba(45,122,79,0.12)',
+    color: color === 'amber' ? 'var(--accent)' : 'var(--success)',
+    border: `1px solid ${color === 'amber' ? 'var(--accent)' : 'var(--success)'}`,
+  }),
+  divider: {
+    border: 'none',
+    borderTop: '1px solid var(--border)',
+    margin: '16px 0',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    color: 'var(--text-muted)',
+    marginBottom: '6px',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  th: {
+    padding: '8px 0',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--text-faint)',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    borderBottom: '1px solid var(--border)',
+  },
+  td: {
+    padding: '10px 0',
+    fontSize: '13px',
+    color: 'var(--text)',
+    borderBottom: '1px solid var(--border)',
+  },
+  emptyState: {
+    textAlign: 'center',
+    color: 'var(--text-faint)',
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: '14px',
+    padding: '60px 0',
+  },
+  grid2: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '12px',
+  },
+}
+
+function Input({ style, ...props }) {
+  return (
+    <input
+      style={{ ...S.input, ...style }}
+      onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+      onBlur={e => e.target.style.borderColor = 'var(--border)'}
+      {...props}
+    />
+  )
+}
+
+function Label({ children }) {
+  return <label style={S.label}>{children}</label>
+}
+
+function Modal({ open, onClose, children }) {
+  if (!open) return null
+  return (
+    <div style={S.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={S.modal}>{children}</div>
+    </div>
+  )
+}
+
+function OSCard({ os, onAtualizado }) {
   const [open, setOpen] = useState(false)
   const [itens, setItens] = useState([])
   const [formaPagamento, setFormaPagamento] = useState('')
   const [valorTotal, setValorTotal] = useState('')
   const [kmEntrada, setKmEntrada] = useState('')
   const [loading, setLoading] = useState(false)
+  const isOrcamento = os.status === 'orcamento'
 
-  useEffect(() => {
-    if (open) fetchItens()
-  }, [open])
+  useEffect(() => { if (open) fetchItens() }, [open])
 
   async function fetchItens() {
     const { data } = await supabase
@@ -37,34 +238,28 @@ function OSModal({ os, onAtualizado }) {
     if (!formaPagamento) { alert('Informe a forma de pagamento'); return }
     setLoading(true)
     const agora = new Date().toISOString()
-    const { error } = await supabase
-      .from('ordens_servico')
-      .update({
-        status: 'concluida',
-        forma_pagamento: formaPagamento,
-        valor_total: parseFloat(valorTotal),
-        pago_em: agora,
-        concluida_em: agora
-      })
-      .eq('id', os.id)
+    const { error } = await supabase.from('ordens_servico').update({
+      status: 'concluida',
+      forma_pagamento: formaPagamento,
+      valor_total: parseFloat(valorTotal),
+      pago_em: agora,
+      concluida_em: agora
+    }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
     setOpen(false)
     onAtualizado()
   }
 
-  async function handleConverterOrcamento() {
+  async function handleConverter() {
     if (!kmEntrada) { alert('Informe o KM de entrada'); return }
     setLoading(true)
     const agora = new Date().toISOString()
-    const { error } = await supabase
-      .from('ordens_servico')
-      .update({
-        status: 'aberta',
-        km_entrada: parseInt(kmEntrada),
-        aberta_em: agora,
-        orcamento_convertido_em: agora
-      })
-      .eq('id', os.id)
+    const { error } = await supabase.from('ordens_servico').update({
+      status: 'aberta',
+      km_entrada: parseInt(kmEntrada),
+      aberta_em: agora,
+      orcamento_convertido_em: agora
+    }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
     await supabase.from('km_registros').insert([{
       veiculo_id: os.veiculo_id,
@@ -83,131 +278,128 @@ function OSModal({ os, onAtualizado }) {
     onAtualizado()
   }
 
-  const isOrcamento = os.status === 'orcamento'
-
   return (
     <>
-      <div onClick={() => setOpen(true)} className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow cursor-pointer">
-        <div className="flex justify-between items-start mb-2">
-          <span className="font-semibold text-gray-800">{os.clientes?.nome_completo}</span>
-          <Badge variant={isOrcamento ? 'outline' : 'default'}>
-            {isOrcamento ? 'Orcamento' : 'Aberta'}
-          </Badge>
+      <div
+        style={S.card}
+        onClick={() => setOpen(true)}
+        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--accent)'; e.currentTarget.style.boxShadow = 'var(--shadow-md)' }}
+        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.boxShadow = 'var(--shadow)' }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '15px', color: 'var(--text)' }}>
+            {os.clientes?.nome_completo}
+          </span>
+          <span style={S.badge(isOrcamento ? 'amber' : 'green')}>
+            {isOrcamento ? 'Orçamento' : 'Aberta'}
+          </span>
         </div>
-        <div className="text-sm text-gray-500">
-          <p>{os.veiculos?.modelos?.marcas?.nome} {os.veiculos?.modelos?.nome}</p>
-          <p className="font-mono">{os.veiculos?.placa}</p>
+        <div style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '4px' }}>
+          {os.veiculos?.modelos?.marcas?.nome} {os.veiculos?.modelos?.nome}
+        </div>
+        <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '13px', color: 'var(--text-faint)', letterSpacing: '0.05em' }}>
+          {os.veiculos?.placa}
         </div>
         {os.km_entrada && (
-          <p className="text-xs text-gray-400 mt-1">KM: {os.km_entrada.toLocaleString()}</p>
+          <div style={{ fontSize: '12px', color: 'var(--text-faint)', marginTop: '6px' }}>
+            KM: {os.km_entrada.toLocaleString()}
+          </div>
         )}
         {os.valor_total && (
-          <p className="text-sm font-semibold text-green-600 mt-2">R$ {parseFloat(os.valor_total).toFixed(2)}</p>
+          <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '16px', color: 'var(--success)', marginTop: '10px' }}>
+            R$ {parseFloat(os.valor_total).toFixed(2)}
+          </div>
         )}
         {isOrcamento && os.validade_orcamento && (
-          <p className="text-xs text-amber-500 mt-1">
-            Valido ate {new Date(os.validade_orcamento).toLocaleDateString('pt-BR')}
-          </p>
+          <div style={{ fontSize: '11px', color: 'var(--accent)', marginTop: '6px' }}>
+            Válido até {new Date(os.validade_orcamento).toLocaleDateString('pt-BR')}
+          </div>
         )}
-        <p className="text-xs text-gray-300 mt-2">
+        <div style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '8px' }}>
           {new Date(os.created_at).toLocaleDateString('pt-BR')}
-        </p>
+        </div>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>
-              {isOrcamento ? 'Orcamento' : 'OS Aberta'} - {os.clientes?.nome_completo}
-            </DialogTitle>
-          </DialogHeader>
+      <Modal open={open} onClose={() => setOpen(false)}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={S.modalTitle}>{isOrcamento ? 'Orçamento' : 'OS Aberta'}</h2>
+          <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+        </div>
 
-          <div className="text-sm text-gray-600 mb-4 grid grid-cols-2 gap-2">
-            <span><b>Veiculo:</b> {os.veiculos?.modelos?.marcas?.nome} {os.veiculos?.modelos?.nome}</span>
-            <span><b>Placa:</b> {os.veiculos?.placa}</span>
-            {os.km_entrada && <span><b>KM:</b> {os.km_entrada.toLocaleString()}</span>}
-            {os.aberta_em && <span><b>Aberta em:</b> {new Date(os.aberta_em).toLocaleDateString('pt-BR')}</span>}
-            {isOrcamento && os.validade_orcamento && (
-              <span className="text-amber-500"><b>Valido ate:</b> {new Date(os.validade_orcamento).toLocaleDateString('pt-BR')}</span>
-            )}
+        <div style={S.infoRow}>
+          <span><b>Cliente:</b> {os.clientes?.nome_completo}</span>
+        </div>
+        <div style={S.infoRow}>
+          <span><b>Veículo:</b> {os.veiculos?.modelos?.marcas?.nome} {os.veiculos?.modelos?.nome}</span>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.05em' }}>{os.veiculos?.placa}</span>
+        </div>
+        {os.km_entrada && <div style={S.infoRow}><span><b>KM:</b> {os.km_entrada.toLocaleString()}</span></div>}
+        {os.aberta_em && <div style={S.infoRow}><span><b>Aberta em:</b> {new Date(os.aberta_em).toLocaleDateString('pt-BR')}</span></div>}
+
+        <hr style={S.divider} />
+
+        <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Serviços</p>
+        <table style={S.table}>
+          <tbody>
+            {itens.map(i => (
+              <tr key={i.id}>
+                <td style={S.td}>{i.servicos?.nome}</td>
+                <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {parseFloat(i.preco_cobrado).toFixed(2)}</td>
+              </tr>
+            ))}
+            <tr>
+              <td style={{ ...S.td, fontWeight: 700, fontFamily: 'Syne, sans-serif', borderBottom: 'none' }}>Total</td>
+              <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--success)', fontSize: '16px', borderBottom: 'none' }}>
+                R$ {parseFloat(os.valor_total || 0).toFixed(2)}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+
+        {os.observacoes && (
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
+            <b>Obs:</b> {os.observacoes}
+          </p>
+        )}
+
+        <hr style={S.divider} />
+
+        {isOrcamento ? (
+          <div>
+            <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Converter em OS</p>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <Input type="number" value={kmEntrada} onChange={e => setKmEntrada(e.target.value)} placeholder="KM de entrada" />
+              <button style={S.btnPrimary} onClick={handleConverter} disabled={loading}>Converter</button>
+            </div>
           </div>
-
-          <div className="mb-4">
-            <p className="font-semibold text-sm mb-2">Servicos</p>
-            <table className="w-full text-sm">
-              <tbody>
-                {itens.map(i => (
-                  <tr key={i.id} className="border-t">
-                    <td className="py-1">{i.servicos?.nome}</td>
-                    <td className="py-1 text-right font-medium">R$ {parseFloat(i.preco_cobrado).toFixed(2)}</td>
-                  </tr>
-                ))}
-                <tr className="border-t font-semibold">
-                  <td className="py-1">Total</td>
-                  <td className="py-1 text-right text-green-600">R$ {parseFloat(os.valor_total || 0).toFixed(2)}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {os.observacoes && (
-            <p className="text-sm text-gray-500 mb-4"><b>Obs:</b> {os.observacoes}</p>
-          )}
-
-          {isOrcamento && (
-            <div className="border-t pt-4">
-              <p className="font-semibold text-sm mb-2">Converter em OS</p>
-              <div className="flex gap-2">
-                <Input
-                  type="number"
-                  value={kmEntrada}
-                  onChange={e => setKmEntrada(e.target.value)}
-                  placeholder="KM de entrada"
-                />
-                <Button onClick={handleConverterOrcamento} disabled={loading}>
-                  Converter
-                </Button>
+        ) : (
+          <div>
+            <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Concluir OS</p>
+            <div style={{ ...S.grid2, marginBottom: '14px' }}>
+              <div>
+                <Label>Forma de Pagamento</Label>
+                <select style={S.select} value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)}>
+                  <option value="">Selecione</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="pix">Pix</option>
+                  <option value="cartao">Cartão</option>
+                </select>
+              </div>
+              <div>
+                <Label>Valor Total (R$)</Label>
+                <Input type="number" value={valorTotal} onChange={e => setValorTotal(e.target.value)} />
               </div>
             </div>
-          )}
-
-          {!isOrcamento && (
-            <div className="border-t pt-4">
-              <p className="font-semibold text-sm mb-2">Concluir OS</p>
-              <div className="grid grid-cols-2 gap-3 mb-3">
-                <div>
-                  <Label>Forma de Pagamento</Label>
-                  <Select value={formaPagamento} onValueChange={setFormaPagamento}>
-                    <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dinheiro">Dinheiro</SelectItem>
-                      <SelectItem value="pix">Pix</SelectItem>
-                      <SelectItem value="cartao">Cartao</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Valor Total (R$)</Label>
-                  <Input
-                    type="number"
-                    value={valorTotal}
-                    onChange={e => setValorTotal(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button className="w-full" onClick={handleConcluir} disabled={loading}>
-                Concluir OS
-              </Button>
-            </div>
-          )}
-
-          <div className="flex justify-end mt-2">
-            <Button variant="ghost" className="text-red-400 hover:text-red-600 text-xs" onClick={handleCancelar}>
-              Cancelar OS
-            </Button>
+            <button style={{ ...S.btnPrimary, width: '100%', padding: '11px' }} onClick={handleConcluir} disabled={loading}>
+              Concluir OS
+            </button>
           </div>
-        </DialogContent>
-      </Dialog>
+        )}
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <button style={S.btnDanger} onClick={handleCancelar}>Cancelar OS</button>
+        </div>
+      </Modal>
     </>
   )
 }
@@ -229,37 +421,39 @@ export default function OrdemServico() {
     setOs(data || [])
   }
 
+  const tabStyle = (ativo) => ({
+    padding: '8px 20px',
+    borderRadius: '7px',
+    fontSize: '13px',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: ativo ? 600 : 400,
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+    background: ativo ? 'var(--accent)' : 'var(--bg-card)',
+    color: ativo ? '#fff' : 'var(--text-muted)',
+    boxShadow: ativo ? 'none' : 'var(--shadow)',
+  })
+
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Ordens de Servico</h1>
-        <Button onClick={() => navigate('/os/nova')}>+ Nova OS</Button>
+      <div style={S.header}>
+        <h1 style={S.h1}>Ordens de Serviço</h1>
+        <button style={S.btnPrimary} onClick={() => navigate('/os/nova')}>+ Nova OS</button>
       </div>
 
-      <div className="flex gap-2 mb-6">
-        <button
-          onClick={() => setAba('abertas')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${aba === 'abertas' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
-        >
-          OS Abertas
-        </button>
-        <button
-          onClick={() => setAba('orcamentos')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${aba === 'orcamentos' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border hover:bg-gray-50'}`}
-        >
-          Orcamentos
-        </button>
+      <div style={S.tabs}>
+        <button style={tabStyle(aba === 'abertas')} onClick={() => setAba('abertas')}>OS Abertas</button>
+        <button style={tabStyle(aba === 'orcamentos')} onClick={() => setAba('orcamentos')}>Orçamentos</button>
       </div>
 
       {os.length === 0 ? (
-        <p className="text-center text-gray-400 py-12">
-          {aba === 'abertas' ? 'Nenhuma OS aberta' : 'Nenhum orcamento pendente'}
+        <p style={S.emptyState}>
+          {aba === 'abertas' ? 'Nenhuma OS aberta' : 'Nenhum orçamento pendente'}
         </p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {os.map(o => (
-            <OSModal key={o.id} os={o} onAtualizado={fetchOS} />
-          ))}
+        <div style={S.grid}>
+          {os.map(o => <OSCard key={o.id} os={o} onAtualizado={fetchOS} />)}
         </div>
       )}
     </div>

@@ -1,20 +1,193 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
-} from '../components/ui/dialog'
+
+const S = {
+  header: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: '24px',
+  },
+  h1: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '24px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+  },
+  btnPrimary: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '7px',
+    padding: '9px 18px',
+    fontSize: '13px',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    transition: 'background 0.15s',
+  },
+  btnSecondary: {
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontFamily: 'DM Sans, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  btnDanger: {
+    background: 'transparent',
+    color: 'var(--danger)',
+    border: 'none',
+    fontSize: '12px',
+    cursor: 'pointer',
+    fontFamily: 'DM Sans, sans-serif',
+    padding: '4px 8px',
+    borderRadius: '4px',
+  },
+  input: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    transition: 'border 0.15s',
+  },
+  label: {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: 'var(--text-muted)',
+    marginBottom: '5px',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+  },
+  card: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '10px',
+    boxShadow: 'var(--shadow)',
+    overflow: 'hidden',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  th: {
+    padding: '12px 16px',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--text-faint)',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    background: 'var(--bg-subtle)',
+    borderBottom: '1px solid var(--border)',
+  },
+  td: {
+    padding: '14px 16px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    borderBottom: '1px solid var(--border)',
+  },
+  badge: {
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.04em',
+    background: 'var(--accent-subtle)',
+    color: 'var(--accent)',
+    border: '1px solid var(--accent)',
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+  },
+  modal: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '12px',
+    padding: '28px',
+    width: '100%',
+    maxWidth: '480px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  modalTitle: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '18px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    marginBottom: '20px',
+    letterSpacing: '-0.02em',
+  },
+  searchWrap: {
+    marginBottom: '16px',
+    maxWidth: '360px',
+  },
+  emptyState: {
+    padding: '48px',
+    textAlign: 'center',
+    color: 'var(--text-faint)',
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: '14px',
+  },
+}
+
+function Input({ style, ...props }) {
+  return (
+    <input
+      style={{ ...S.input, ...style }}
+      onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+      onBlur={e => e.target.style.borderColor = 'var(--border)'}
+      {...props}
+    />
+  )
+}
+
+function Label({ children }) {
+  return <label style={S.label}>{children}</label>
+}
+
+function Modal({ open, onClose, title, children }) {
+  if (!open) return null
+  return (
+    <div style={S.overlay} onClick={e => e.target === e.currentTarget && onClose()}>
+      <div style={S.modal}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={S.modalTitle}>{title}</h2>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
 
 export default function Servicos() {
   const [servicos, setServicos] = useState([])
   const [open, setOpen] = useState(false)
   const [busca, setBusca] = useState('')
-  const [form, setForm] = useState({
-    nome: '', descricao: '', categoria: ''
-  })
+  const [categorias, setCategorias] = useState([])
+  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '' })
 
   useEffect(() => { fetchServicos() }, [])
 
@@ -25,10 +198,8 @@ export default function Servicos() {
       .eq('ativo', true)
       .order('nome')
     setServicos(data || [])
-  }
-
-  function handleChange(e) {
-    setForm({ ...form, [e.target.name]: e.target.value })
+    const unicas = [...new Set((data || []).map(s => s.categoria).filter(Boolean))]
+    setCategorias(unicas)
   }
 
   async function handleSalvar() {
@@ -40,7 +211,8 @@ export default function Servicos() {
     fetchServicos()
   }
 
-  async function handleDesativar(id) {
+  async function handleRemover(id) {
+    if (!confirm('Remover este serviço?')) return
     await supabase.from('servicos').update({ ativo: false }).eq('id', id)
     fetchServicos()
   }
@@ -50,94 +222,86 @@ export default function Servicos() {
     (s.categoria || '').toLowerCase().includes(busca.toLowerCase())
   )
 
-  const categorias = [...new Set(servicos.map(s => s.categoria).filter(Boolean))]
-
   return (
     <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Serviços</h1>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>+ Novo Serviço</Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Novo Serviço</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4">
-              <div>
-                <Label>Nome</Label>
-                <Input name="nome" value={form.nome} onChange={handleChange} placeholder="Ex: Troca de óleo" />
-              </div>
-              <div>
-                <Label>Categoria</Label>
-                <Input name="categoria" value={form.categoria} onChange={handleChange} placeholder="Ex: Revisão, Elétrica, Freios" list="categorias-list" />
-                <datalist id="categorias-list">
-                  {categorias.map(c => <option key={c} value={c} />)}
-                </datalist>
-              </div>
-              <div>
-                <Label>Descrição</Label>
-                <Input name="descricao" value={form.descricao} onChange={handleChange} placeholder="Detalhes opcionais" />
-              </div>
-              <div className="flex justify-end gap-2 mt-2">
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-                <Button onClick={handleSalvar}>Salvar</Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      <div style={S.header}>
+        <h1 style={S.h1}>Serviços</h1>
+        <button style={S.btnPrimary} onClick={() => setOpen(true)}>+ Novo Serviço</button>
       </div>
 
-      <div className="mb-4">
+      <div style={S.searchWrap}>
         <Input
-          placeholder="Buscar por nome ou categoria..."
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          className="max-w-sm"
+          placeholder="Buscar por nome ou categoria..."
         />
       </div>
 
-      <table className="w-full bg-white rounded-lg shadow text-sm">
-        <thead className="bg-gray-100 text-left">
-          <tr>
-            <th className="p-3">Nome</th>
-            <th className="p-3">Categoria</th>
-            <th className="p-3">Descrição</th>
-            <th className="p-3"></th>
-          </tr>
-        </thead>
-        <tbody>
-          {servicosFiltrados.map(s => (
-            <tr key={s.id} className="border-t hover:bg-gray-50">
-              <td className="p-3 font-medium">{s.nome}</td>
-              <td className="p-3">
-                {s.categoria
-                  ? <Badge variant="outline">{s.categoria}</Badge>
-                  : <span className="text-gray-300">—</span>}
-              </td>
-              <td className="p-3 text-gray-500">{s.descricao || '—'}</td>
-              <td className="p-3 text-right">
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="text-red-400 hover:text-red-600"
-                  onClick={() => handleDesativar(s.id)}
-                >
-                  Remover
-                </Button>
-              </td>
-            </tr>
-          ))}
-          {servicosFiltrados.length === 0 && (
+      <div style={S.card}>
+        <table style={S.table}>
+          <thead>
             <tr>
-              <td colSpan={4} className="p-6 text-center text-gray-400">
-                Nenhum serviço cadastrado
-              </td>
+              <th style={S.th}>Nome</th>
+              <th style={S.th}>Categoria</th>
+              <th style={S.th}>Descrição</th>
+              <th style={S.th}></th>
             </tr>
-          )}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {servicosFiltrados.map(s => (
+              <tr
+                key={s.id}
+                style={{ borderBottom: '1px solid var(--border)', transition: 'background 0.1s' }}
+                onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+              >
+                <td style={{ ...S.td, fontWeight: 500 }}>{s.nome}</td>
+                <td style={S.td}>
+                  {s.categoria
+                    ? <span style={S.badge}>{s.categoria}</span>
+                    : <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                </td>
+                <td style={{ ...S.td, color: 'var(--text-muted)' }}>{s.descricao || '—'}</td>
+                <td style={{ ...S.td, textAlign: 'right' }}>
+                  <button style={S.btnDanger} onClick={() => handleRemover(s.id)}>Remover</button>
+                </td>
+              </tr>
+            ))}
+            {servicosFiltrados.length === 0 && (
+              <tr><td colSpan={4} style={S.emptyState}>Nenhum serviço cadastrado</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <Modal open={open} onClose={() => setOpen(false)} title="Novo Serviço">
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <Label>Nome</Label>
+            <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
+          </div>
+          <div>
+            <Label>Categoria</Label>
+            <Input
+              value={form.categoria}
+              onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
+              placeholder="Ex: Revisão, Elétrica, Freios"
+              list="categorias-list"
+            />
+            <datalist id="categorias-list">
+              {categorias.map(c => <option key={c} value={c} />)}
+            </datalist>
+          </div>
+          <div>
+            <Label>Descrição</Label>
+            <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes opcionais" />
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
+            <button style={S.btnSecondary} onClick={() => setOpen(false)}>Cancelar</button>
+            <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

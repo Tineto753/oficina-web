@@ -1,8 +1,124 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabase'
-import { Input } from '../components/ui/input'
-import { Button } from '../components/ui/button'
-import { Badge } from '../components/ui/badge'
+
+const S = {
+  h1: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '24px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+    marginBottom: '24px',
+  },
+  btnPrimary: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '7px',
+    padding: '9px 18px',
+    fontSize: '13px',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    transition: 'background 0.15s',
+  },
+  input: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    transition: 'border 0.15s',
+  },
+  card: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '10px',
+    padding: '20px',
+    marginBottom: '16px',
+    boxShadow: 'var(--shadow)',
+  },
+  sectionTitle: {
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    fontSize: '13px',
+    color: 'var(--text-muted)',
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    marginBottom: '14px',
+  },
+  divider: {
+    border: 'none',
+    borderTop: '1px solid var(--border)',
+    margin: '16px 0',
+  },
+  badge: (color) => ({
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.04em',
+    background: color === 'green' ? 'rgba(45,122,79,0.12)' :
+                color === 'amber' ? 'rgba(193,127,36,0.12)' :
+                color === 'red' ? 'rgba(192,57,43,0.12)' : 'var(--bg-subtle)',
+    color: color === 'green' ? 'var(--success)' :
+           color === 'amber' ? 'var(--accent)' :
+           color === 'red' ? 'var(--danger)' : 'var(--text-faint)',
+    border: `1px solid ${
+      color === 'green' ? 'var(--success)' :
+      color === 'amber' ? 'var(--accent)' :
+      color === 'red' ? 'var(--danger)' : 'var(--border)'
+    }`,
+  }),
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  th: {
+    padding: '8px 0',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--text-faint)',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    borderBottom: '1px solid var(--border)',
+  },
+  td: {
+    padding: '10px 0',
+    fontSize: '13px',
+    color: 'var(--text)',
+    borderBottom: '1px solid var(--border)',
+  },
+  emptyState: {
+    textAlign: 'center',
+    color: 'var(--text-faint)',
+    fontFamily: 'DM Sans, sans-serif',
+    fontSize: '14px',
+    padding: '60px 0',
+  },
+  infoRow: {
+    display: 'flex',
+    justifyContent: 'space-between',
+    fontSize: '13px',
+    color: 'var(--text-muted)',
+    marginBottom: '6px',
+  },
+}
+
+const statusMap = {
+  aberta:   { label: 'Aberta',    color: 'amber' },
+  concluida: { label: 'Concluída', color: 'green' },
+  orcamento: { label: 'Orçamento', color: 'amber' },
+  cancelado: { label: 'Cancelado', color: 'red' },
+}
 
 export default function Historico() {
   const [busca, setBusca] = useState('')
@@ -49,107 +165,121 @@ export default function Historico() {
     setLoading(false)
   }
 
-  const statusLabel = {
-    aberta: { label: 'Aberta', color: 'default' },
-    concluida: { label: 'Concluída', color: 'default' },
-    orcamento: { label: 'Orçamento', color: 'outline' },
-    cancelado: { label: 'Cancelado', color: 'destructive' }
-  }
-
   return (
-    <div className="max-w-3xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6">Histórico do Veículo</h1>
+    <div style={{ maxWidth: '720px', margin: '0 auto' }}>
+      <h1 style={S.h1}>Histórico do Veículo</h1>
 
-      <div className="flex gap-2 mb-6">
-        <Input
+      {/* Busca */}
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '28px' }}>
+        <input
+          style={{ ...S.input, width: '220px' }}
           value={busca}
           onChange={e => setBusca(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && handleBuscar()}
-          placeholder="Digite a placa... Ex: ABC1234"
-          className="max-w-sm"
+          onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+          onBlur={e => e.target.style.borderColor = 'var(--border)'}
+          placeholder="Placa... Ex: ABC1234"
         />
-        <Button onClick={handleBuscar} disabled={loading}>
+        <button style={S.btnPrimary} onClick={handleBuscar} disabled={loading}>
           {loading ? 'Buscando...' : 'Buscar'}
-        </Button>
+        </button>
       </div>
 
       {notFound && (
-        <p className="text-center text-gray-400 py-8">Nenhum veículo encontrado com essa placa.</p>
+        <p style={S.emptyState}>Nenhum veículo encontrado com essa placa.</p>
       )}
 
       {veiculo && (
         <>
-          {/* Dados do veículo */}
-          <div className="bg-white rounded-lg shadow p-4 mb-4">
-            <div className="flex justify-between items-start">
+          {/* Card do veículo */}
+          <div style={S.card}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div>
-                <h2 className="text-lg font-bold">
+                <h2 style={{ fontFamily: 'Syne, sans-serif', fontSize: '18px', fontWeight: 700, color: 'var(--text)', letterSpacing: '-0.02em' }}>
                   {veiculo.modelos?.marcas?.nome} {veiculo.modelos?.nome}
                 </h2>
-                <p className="text-gray-500 text-sm">{veiculo.ano_fabricacao}/{veiculo.ano_modelo} — {veiculo.cor}</p>
-                {veiculo.chassi && <p className="text-gray-400 text-xs mt-1">Chassi: {veiculo.chassi}</p>}
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '4px' }}>
+                  {veiculo.ano_fabricacao}/{veiculo.ano_modelo} · {veiculo.cor}
+                </p>
+                {veiculo.chassi && (
+                  <p style={{ fontSize: '12px', color: 'var(--text-faint)', marginTop: '2px' }}>Chassi: {veiculo.chassi}</p>
+                )}
               </div>
-              <span className="font-mono text-lg font-bold text-gray-700">{veiculo.placa}</span>
+              <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 800, fontSize: '20px', color: 'var(--text)', letterSpacing: '0.06em' }}>
+                {veiculo.placa}
+              </span>
             </div>
-            <div className="border-t mt-3 pt-3 text-sm text-gray-600">
-              <p><b>Proprietário:</b> {veiculo.clientes?.nome_completo}</p>
-              <p><b>Telefone:</b> {veiculo.clientes?.telefone}</p>
+
+            <hr style={S.divider} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div style={S.infoRow}><span><b>Proprietário:</b> {veiculo.clientes?.nome_completo}</span></div>
+              <div style={S.infoRow}><span><b>Telefone:</b> {veiculo.clientes?.telefone}</span></div>
             </div>
+
             {kms.length > 0 && (
-              <div className="border-t mt-3 pt-3 text-sm">
-                <p className="text-gray-500">Último KM registrado: <span className="font-semibold text-gray-800">{kms[0].km.toLocaleString()} km</span></p>
+              <div style={{ marginTop: '12px', padding: '10px 14px', background: 'var(--bg-subtle)', borderRadius: '7px', display: 'inline-block' }}>
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Último KM registrado: </span>
+                <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '15px', color: 'var(--text)' }}>
+                  {kms[0].km.toLocaleString()} km
+                </span>
               </div>
             )}
           </div>
 
           {/* Histórico de OS */}
-          <h3 className="font-semibold mb-3">Histórico de Ordens de Serviço</h3>
+          <p style={S.sectionTitle}>Histórico de Ordens de Serviço</p>
+
           {os.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-6">Nenhuma OS encontrada.</p>
+            <p style={S.emptyState}>Nenhuma OS encontrada.</p>
           ) : (
-            <div className="flex flex-col gap-3">
-              {os.map(o => (
-                <div key={o.id} className="bg-white rounded-lg shadow p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <span className="text-sm text-gray-400">
-                        {new Date(o.created_at).toLocaleDateString('pt-BR')}
-                      </span>
-                      {o.km_entrada && (
-                        <span className="text-xs text-gray-400 ml-3">KM: {o.km_entrada.toLocaleString()}</span>
-                      )}
-                    </div>
-                    <Badge variant={statusLabel[o.status]?.color}>
-                      {statusLabel[o.status]?.label}
-                    </Badge>
+            os.map(o => (
+              <div key={o.id} style={S.card}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                    <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text)' }}>
+                      {new Date(o.created_at).toLocaleDateString('pt-BR')}
+                    </span>
+                    {o.km_entrada && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>KM: {o.km_entrada.toLocaleString()}</span>
+                    )}
                   </div>
-
-                  <table className="w-full text-sm mb-2">
-                    <tbody>
-                      {o.os_servicos?.map((s, i) => (
-                        <tr key={i} className="border-t">
-                          <td className="py-1">{s.servicos?.nome}</td>
-                          {s.observacoes && <td className="py-1 text-gray-400 text-xs">{s.observacoes}</td>}
-                          <td className="py-1 text-right">R$ {parseFloat(s.preco_cobrado).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                      <tr className="border-t font-semibold">
-                        <td className="py-1">Total</td>
-                        <td></td>
-                        <td className="py-1 text-right text-green-600">R$ {parseFloat(o.valor_total || 0).toFixed(2)}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-
-                  {o.forma_pagamento && (
-                    <p className="text-xs text-gray-400">Pagamento: {o.forma_pagamento}</p>
-                  )}
-                  {o.observacoes && (
-                    <p className="text-xs text-gray-400">Obs: {o.observacoes}</p>
-                  )}
+                  <span style={S.badge(statusMap[o.status]?.color)}>
+                    {statusMap[o.status]?.label}
+                  </span>
                 </div>
-              ))}
-            </div>
+
+                <table style={S.table}>
+                  <tbody>
+                    {o.os_servicos?.map((s, i) => (
+                      <tr key={i}>
+                        <td style={S.td}>{s.servicos?.nome}</td>
+                        {s.observacoes && <td style={{ ...S.td, color: 'var(--text-faint)', fontSize: '12px' }}>{s.observacoes}</td>}
+                        <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {parseFloat(s.preco_cobrado).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                    <tr>
+                      <td style={{ ...S.td, fontFamily: 'Syne, sans-serif', fontWeight: 700, borderBottom: 'none' }}>Total</td>
+                      <td style={{ borderBottom: 'none' }}></td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--success)', fontSize: '15px', borderBottom: 'none' }}>
+                        R$ {parseFloat(o.valor_total || 0).toFixed(2)}
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                {(o.forma_pagamento || o.observacoes) && (
+                  <div style={{ marginTop: '10px', display: 'flex', gap: '16px' }}>
+                    {o.forma_pagamento && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>Pagamento: {o.forma_pagamento}</span>
+                    )}
+                    {o.observacoes && (
+                      <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>Obs: {o.observacoes}</span>
+                    )}
+                  </div>
+                )}
+              </div>
+            ))
           )}
         </>
       )}

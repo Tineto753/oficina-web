@@ -1,0 +1,27 @@
+oficina-web/
+  src/
+    pages/
+      Clientes.jsx        → tela de clientes + modal de veículos
+      Servicos.jsx        → catálogo de serviços
+      OrdemServico.jsx    → listagem de OS abertas e orçamentos
+      NovaOS.jsx          → criação de OS e orçamento
+      Historico.jsx       → busca por placa, histórico completo
+      Configuracoes.jsx   → validade do orçamento
+
+    lib/
+      supabase.js         → conexão com o banco
+      exportar.js         → geração da planilha Excel
+
+    components/
+      ui/                 → componentes shadcn (button, input, etc)
+                            (não usados mais nas páginas novas,
+                            mas ainda lá caso precise)
+
+    App.jsx               → rotas + navbar + toggle dark/dark
+    index.css             → variáveis de tema, fontes, reset global
+
+  public/                 → arquivos estáticos
+  index.html              → entrada do app
+  vite.config.js          → config do Vite + Tailwind + alias
+  jsconfig.json           → alias de imports (@/)
+  package.json            → dependências

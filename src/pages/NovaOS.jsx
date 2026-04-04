@@ -1,16 +1,202 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { Button } from '../components/ui/button'
-import { Input } from '../components/ui/input'
-import { Label } from '../components/ui/label'
-import { Badge } from '../components/ui/badge'
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger
-} from '../components/ui/dialog'
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue
-} from '../components/ui/select'
+
+const S = {
+  h1: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '24px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    letterSpacing: '-0.02em',
+  },
+  btnPrimary: {
+    background: 'var(--accent)',
+    color: '#fff',
+    border: 'none',
+    borderRadius: '7px',
+    padding: '9px 18px',
+    fontSize: '13px',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    cursor: 'pointer',
+    letterSpacing: '0.01em',
+    transition: 'background 0.15s',
+  },
+  btnSecondary: {
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '8px 16px',
+    fontSize: '13px',
+    fontFamily: 'DM Sans, sans-serif',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  },
+  btnOutline: (ativo) => ({
+    flex: 1,
+    padding: '10px',
+    borderRadius: '7px',
+    border: ativo ? '2px solid var(--accent)' : '1px solid var(--border)',
+    background: ativo ? 'var(--accent-subtle)' : 'transparent',
+    color: ativo ? 'var(--accent)' : 'var(--text-muted)',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: ativo ? 600 : 400,
+    fontSize: '13px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  }),
+  input: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    transition: 'border 0.15s',
+  },
+  select: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    cursor: 'pointer',
+  },
+  label: {
+    display: 'block',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: 'var(--text-muted)',
+    marginBottom: '5px',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase',
+  },
+  section: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '10px',
+    padding: '20px',
+    marginBottom: '16px',
+    boxShadow: 'var(--shadow)',
+  },
+  sectionTitle: {
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 600,
+    fontSize: '13px',
+    color: 'var(--text-muted)',
+    letterSpacing: '0.05em',
+    textTransform: 'uppercase',
+    marginBottom: '14px',
+  },
+  divider: {
+    border: 'none',
+    borderTop: '1px solid var(--border)',
+    margin: '14px 0',
+  },
+  autocompleteWrap: {
+    position: 'relative',
+  },
+  autocompleteList: {
+    position: 'absolute',
+    top: '100%',
+    left: 0,
+    right: 0,
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    boxShadow: 'var(--shadow-md)',
+    zIndex: 50,
+    marginTop: '4px',
+    overflow: 'hidden',
+  },
+  autocompleteItem: {
+    padding: '10px 14px',
+    cursor: 'pointer',
+    fontSize: '14px',
+    color: 'var(--text)',
+    transition: 'background 0.1s',
+    borderBottom: '1px solid var(--border)',
+  },
+  table: {
+    width: '100%',
+    borderCollapse: 'collapse',
+  },
+  th: {
+    padding: '8px 0',
+    textAlign: 'left',
+    fontSize: '11px',
+    fontWeight: 600,
+    color: 'var(--text-faint)',
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+    borderBottom: '1px solid var(--border)',
+  },
+  td: {
+    padding: '10px 0',
+    fontSize: '13px',
+    color: 'var(--text)',
+    borderBottom: '1px solid var(--border)',
+  },
+  totalRow: {
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: 700,
+    fontSize: '15px',
+    color: 'var(--success)',
+  },
+  overlay: {
+    position: 'fixed',
+    inset: 0,
+    background: 'rgba(0,0,0,0.5)',
+    zIndex: 200,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '24px',
+  },
+  modal: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '12px',
+    padding: '28px',
+    width: '100%',
+    maxWidth: '420px',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.3)',
+  },
+  modalTitle: {
+    fontFamily: 'Syne, sans-serif',
+    fontSize: '18px',
+    fontWeight: 700,
+    color: 'var(--text)',
+    marginBottom: '20px',
+    letterSpacing: '-0.02em',
+  },
+}
+
+function Input({ style, ...props }) {
+  return (
+    <input
+      style={{ ...S.input, ...style }}
+      onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+      onBlur={e => e.target.style.borderColor = 'var(--border)'}
+      {...props}
+    />
+  )
+}
+
+function Label({ children }) {
+  return <label style={S.label}>{children}</label>
+}
 
 function NovoServicoModal({ onSalvo }) {
   const [open, setOpen] = useState(false)
@@ -36,14 +222,20 @@ function NovoServicoModal({ onSalvo }) {
     setForm({ nome: '', descricao: '', categoria: '' })
   }
 
+  if (!open) return (
+    <button style={{ ...S.btnSecondary, padding: '6px 12px', fontSize: '12px' }} onClick={() => setOpen(true)}>
+      + Novo Serviço
+    </button>
+  )
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm" variant="outline">+ Novo Serviço</Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-md">
-        <DialogHeader><DialogTitle>Novo Serviço</DialogTitle></DialogHeader>
-        <div className="grid gap-4">
+    <div style={S.overlay} onClick={e => e.target === e.currentTarget && setOpen(false)}>
+      <div style={S.modal}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h2 style={S.modalTitle}>Novo Serviço</h2>
+          <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <Label>Nome</Label>
             <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
@@ -57,13 +249,13 @@ function NovoServicoModal({ onSalvo }) {
             <Label>Descrição</Label>
             <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
           </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSalvar}>Salvar</Button>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+            <button style={S.btnSecondary} onClick={() => setOpen(false)}>Cancelar</button>
+            <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   )
 }
 
@@ -84,13 +276,10 @@ export default function NovaOS() {
   const [obsServico, setObsServico] = useState('')
   const [validadeDias, setValidadeDias] = useState(30)
 
-  useEffect(() => { fetchServicosDisponiveis() }, [])
   useEffect(() => {
-    const config = async () => {
-      const { data } = await supabase.from('configuracoes').select('valor').eq('chave', 'validade_orcamento_dias').single()
-      if (data) setValidadeDias(parseInt(data.valor))
-    }
-    config()
+    fetchServicosDisponiveis()
+    supabase.from('configuracoes').select('valor').eq('chave', 'validade_orcamento_dias').single()
+      .then(({ data }) => { if (data) setValidadeDias(parseInt(data.valor)) })
   }, [])
 
   async function fetchServicosDisponiveis() {
@@ -100,6 +289,7 @@ export default function NovaOS() {
 
   async function buscarClientes(q) {
     setBusca(q)
+    setClienteSelecionado(null)
     if (q.length < 2) { setClientes([]); return }
     const { data } = await supabase
       .from('clientes')
@@ -125,8 +315,8 @@ export default function NovaOS() {
 
   function adicionarServico() {
     if (!servicoId || !preco) { alert('Selecione o serviço e informe o preço'); return }
-    const svc = servicosDisponiveis.find(s => s.id === servicoId)
     if (servicos.find(s => s.servico_id === servicoId)) { alert('Serviço já adicionado'); return }
+    const svc = servicosDisponiveis.find(s => s.id === servicoId)
     setServicos(sv => [...sv, {
       servico_id: servicoId,
       nome: svc.nome,
@@ -136,10 +326,6 @@ export default function NovaOS() {
     setServicoId('')
     setPreco('')
     setObsServico('')
-  }
-
-  function removerServico(servicoId) {
-    setServicos(sv => sv.filter(s => s.servico_id !== servicoId))
   }
 
   async function handleSalvar() {
@@ -164,29 +350,16 @@ export default function NovaOS() {
         : null
     }
 
-    const { data: os, error } = await supabase
-      .from('ordens_servico')
-      .insert([osData])
-      .select()
-      .single()
-
+    const { data: os, error } = await supabase.from('ordens_servico').insert([osData]).select().single()
     if (error) { alert('Erro: ' + error.message); return }
 
-    const itens = servicos.map(s => ({
-      os_id: os.id,
-      servico_id: s.servico_id,
-      preco_cobrado: s.preco_cobrado,
-      observacoes: s.observacoes
-    }))
-
-    await supabase.from('os_servicos').insert(itens)
+    await supabase.from('os_servicos').insert(
+      servicos.map(s => ({ os_id: os.id, servico_id: s.servico_id, preco_cobrado: s.preco_cobrado, observacoes: s.observacoes }))
+    )
 
     if (tipo === 'aberta' && kmEntrada) {
       await supabase.from('km_registros').insert([{
-        veiculo_id: veiculoId,
-        os_id: os.id,
-        km: parseInt(kmEntrada),
-        origem: 'entrada_os'
+        veiculo_id: veiculoId, os_id: os.id, km: parseInt(kmEntrada), origem: 'entrada_os'
       }])
     }
 
@@ -196,177 +369,164 @@ export default function NovaOS() {
   const totalOS = servicos.reduce((acc, s) => acc + s.preco_cobrado, 0)
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <div className="flex items-center gap-4 mb-6">
-        <Button variant="outline" onClick={() => navigate('/os')}>← Voltar</Button>
-        <h1 className="text-2xl font-bold">Nova OS</h1>
+    <div style={{ maxWidth: '680px', margin: '0 auto' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '24px' }}>
+        <button style={S.btnSecondary} onClick={() => navigate('/os')}>← Voltar</button>
+        <h1 style={S.h1}>Nova OS</h1>
       </div>
 
       {/* Tipo */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <Label className="mb-2 block">Tipo</Label>
-        <div className="flex gap-3">
-          <button
-            onClick={() => setTipo('aberta')}
-            className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${tipo === 'aberta' ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            OS Direta
-          </button>
-          <button
-            onClick={() => setTipo('orcamento')}
-            className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${tipo === 'orcamento' ? 'bg-amber-500 text-white border-amber-500' : 'border-gray-200 text-gray-600 hover:bg-gray-50'}`}
-          >
-            Orçamento
-          </button>
+      <div style={S.section}>
+        <p style={S.sectionTitle}>Tipo</p>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button style={S.btnOutline(tipo === 'aberta')} onClick={() => setTipo('aberta')}>OS Direta</button>
+          <button style={S.btnOutline(tipo === 'orcamento')} onClick={() => setTipo('orcamento')}>Orçamento</button>
         </div>
       </div>
 
       {/* Cliente */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <Label className="mb-2 block">Cliente</Label>
-        <div className="relative">
+      <div style={S.section}>
+        <p style={S.sectionTitle}>Cliente</p>
+        <div style={S.autocompleteWrap}>
           <Input
             value={busca}
             onChange={e => buscarClientes(e.target.value)}
             placeholder="Digite o nome do cliente..."
           />
           {clientes.length > 0 && (
-            <div className="absolute z-10 w-full bg-white border rounded-lg shadow-lg mt-1">
+            <div style={S.autocompleteList}>
               {clientes.map(c => (
-                <button
+                <div
                   key={c.id}
-                  className="w-full text-left px-4 py-2 hover:bg-gray-50 text-sm"
+                  style={S.autocompleteItem}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
                   onClick={() => selecionarCliente(c)}
                 >
-                  <span className="font-medium">{c.nome_completo}</span>
-                  <span className="text-gray-400 ml-2">{c.telefone}</span>
-                </button>
+                  <span style={{ fontWeight: 500 }}>{c.nome_completo}</span>
+                  <span style={{ color: 'var(--text-faint)', marginLeft: '10px', fontSize: '12px' }}>{c.telefone}</span>
+                </div>
               ))}
             </div>
           )}
         </div>
 
         {clienteSelecionado && veiculos.length > 0 && (
-          <div className="mt-3">
-            <Label className="mb-2 block">Veículo</Label>
-            <Select value={veiculoId} onValueChange={setVeiculoId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o veículo" />
-              </SelectTrigger>
-              <SelectContent>
-                {veiculos.map(v => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.modelos?.marcas?.nome} {v.modelos?.nome} — {v.placa} ({v.ano_modelo})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div style={{ marginTop: '14px' }}>
+            <Label>Veículo</Label>
+            <select style={S.select} value={veiculoId} onChange={e => setVeiculoId(e.target.value)}>
+              <option value="">Selecione o veículo</option>
+              {veiculos.map(v => (
+                <option key={v.id} value={v.id}>
+                  {v.modelos?.marcas?.nome} {v.modelos?.nome} — {v.placa} ({v.ano_modelo})
+                </option>
+              ))}
+            </select>
           </div>
         )}
 
         {clienteSelecionado && veiculos.length === 0 && (
-          <p className="text-sm text-amber-500 mt-2">Este cliente não tem veículos cadastrados.</p>
+          <p style={{ fontSize: '13px', color: 'var(--accent)', marginTop: '10px' }}>
+            Este cliente não tem veículos cadastrados.
+          </p>
         )}
       </div>
 
-      {/* KM — só para OS direta */}
+      {/* KM */}
       {tipo === 'aberta' && (
-        <div className="bg-white rounded-lg shadow p-4 mb-4">
-          <Label className="mb-2 block">KM de Entrada</Label>
-          <Input
-            type="number"
-            value={kmEntrada}
-            onChange={e => setKmEntrada(e.target.value)}
-            placeholder="Ex: 52000"
-          />
+        <div style={S.section}>
+          <p style={S.sectionTitle}>KM de Entrada</p>
+          <Input type="number" value={kmEntrada} onChange={e => setKmEntrada(e.target.value)} placeholder="Ex: 52000" style={{ maxWidth: '200px' }} />
         </div>
       )}
 
       {/* Serviços */}
-      <div className="bg-white rounded-lg shadow p-4 mb-4">
-        <div className="flex justify-between items-center mb-3">
-          <Label>Serviços</Label>
+      <div style={S.section}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+          <p style={{ ...S.sectionTitle, marginBottom: 0 }}>Serviços</p>
           <NovoServicoModal onSalvo={svc => {
             setServicosDisponiveis(sv => [...sv, svc])
             setServicoId(svc.id)
           }} />
         </div>
 
-        <div className="flex gap-2 mb-3">
-          <Select value={servicoId} onValueChange={setServicoId}>
-            <SelectTrigger className="flex-1">
-              <SelectValue placeholder="Selecione o serviço" />
-            </SelectTrigger>
-            <SelectContent>
+        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+          <div style={{ flex: 1 }}>
+            <select style={S.select} value={servicoId} onChange={e => setServicoId(e.target.value)}>
+              <option value="">Selecione o serviço</option>
               {servicosDisponiveis.map(s => (
-                <SelectItem key={s.id} value={s.id}>{s.nome}</SelectItem>
+                <option key={s.id} value={s.id}>{s.nome}</option>
               ))}
-            </SelectContent>
-          </Select>
+            </select>
+          </div>
           <Input
             type="number"
             value={preco}
             onChange={e => setPreco(e.target.value)}
             placeholder="R$ preço"
-            className="w-32"
+            style={{ width: '120px' }}
           />
-          <Button onClick={adicionarServico}>Adicionar</Button>
+          <button style={S.btnPrimary} onClick={adicionarServico}>Adicionar</button>
         </div>
 
         {servicoId && (
-          <div className="mb-3">
-            <Input
-              value={obsServico}
-              onChange={e => setObsServico(e.target.value)}
-              placeholder="Observação do serviço (opcional)"
-            />
+          <div style={{ marginBottom: '12px' }}>
+            <Input value={obsServico} onChange={e => setObsServico(e.target.value)} placeholder="Observação do serviço (opcional)" />
           </div>
         )}
 
         {servicos.length > 0 ? (
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 text-left">
+          <table style={S.table}>
+            <thead>
               <tr>
-                <th className="p-2">Serviço</th>
-                <th className="p-2">Obs</th>
-                <th className="p-2 text-right">Preço</th>
-                <th className="p-2"></th>
+                <th style={S.th}>Serviço</th>
+                <th style={S.th}>Obs</th>
+                <th style={{ ...S.th, textAlign: 'right' }}>Preço</th>
+                <th style={S.th}></th>
               </tr>
             </thead>
             <tbody>
               {servicos.map(s => (
-                <tr key={s.servico_id} className="border-t">
-                  <td className="p-2">{s.nome}</td>
-                  <td className="p-2 text-gray-400">{s.observacoes || '—'}</td>
-                  <td className="p-2 text-right">R$ {s.preco_cobrado.toFixed(2)}</td>
-                  <td className="p-2 text-right">
-                    <button onClick={() => removerServico(s.servico_id)} className="text-red-400 hover:text-red-600 text-xs">remover</button>
+                <tr key={s.servico_id}>
+                  <td style={S.td}>{s.nome}</td>
+                  <td style={{ ...S.td, color: 'var(--text-faint)', fontSize: '12px' }}>{s.observacoes || '—'}</td>
+                  <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {s.preco_cobrado.toFixed(2)}</td>
+                  <td style={{ ...S.td, textAlign: 'right' }}>
+                    <button
+                      onClick={() => setServicos(sv => sv.filter(x => x.servico_id !== s.servico_id))}
+                      style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '12px' }}
+                    >
+                      remover
+                    </button>
                   </td>
                 </tr>
               ))}
-              <tr className="border-t font-semibold">
-                <td colSpan={2} className="p-2">Total</td>
-                <td className="p-2 text-right">R$ {totalOS.toFixed(2)}</td>
-                <td></td>
+              <tr>
+                <td style={{ ...S.td, ...S.totalRow, borderBottom: 'none' }}>Total</td>
+                <td style={{ borderBottom: 'none' }}></td>
+                <td style={{ ...S.td, ...S.totalRow, textAlign: 'right', borderBottom: 'none' }}>R$ {totalOS.toFixed(2)}</td>
+                <td style={{ borderBottom: 'none' }}></td>
               </tr>
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-gray-400 text-center py-3">Nenhum serviço adicionado</p>
+          <p style={{ color: 'var(--text-faint)', fontSize: '13px', textAlign: 'center', padding: '20px 0' }}>
+            Nenhum serviço adicionado
+          </p>
         )}
       </div>
 
       {/* Observações */}
-      <div className="bg-white rounded-lg shadow p-4 mb-6">
-        <Label className="mb-2 block">Observações</Label>
+      <div style={S.section}>
+        <p style={S.sectionTitle}>Observações</p>
         <Input value={observacoes} onChange={e => setObservacoes(e.target.value)} placeholder="Opcional" />
       </div>
 
-      <div className="flex justify-end gap-3">
-        <Button variant="outline" onClick={() => navigate('/os')}>Cancelar</Button>
-        <Button onClick={handleSalvar}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+        <button style={S.btnSecondary} onClick={() => navigate('/os')}>Cancelar</button>
+        <button style={S.btnPrimary} onClick={handleSalvar}>
           {tipo === 'aberta' ? 'Abrir OS' : 'Salvar Orçamento'}
-        </Button>
+        </button>
       </div>
     </div>
   )
