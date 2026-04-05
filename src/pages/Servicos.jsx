@@ -1,6 +1,28 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
+const TIPOS = [
+  { value: 'servico', label: 'Serviço', color: 'var(--accent)' },
+  { value: 'peca', label: 'Peça', color: 'var(--success)' },
+  { value: 'terceirizado', label: 'Terceirizado', color: 'var(--text-muted)' },
+]
+
+function tipoBadgeStyle(tipo) {
+  const t = TIPOS.find(t => t.value === tipo) || TIPOS[0]
+  return {
+    display: 'inline-block',
+    padding: '2px 8px',
+    borderRadius: '4px',
+    fontSize: '11px',
+    fontWeight: 600,
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.04em',
+    color: t.color,
+    border: `1px solid ${t.color}`,
+    background: 'transparent',
+  }
+}
+
 const S = {
   header: {
     display: 'flex',
@@ -60,6 +82,18 @@ const S = {
     outline: 'none',
     width: '100%',
     transition: 'border 0.15s',
+  },
+  select: {
+    background: 'var(--bg-card)',
+    border: '1px solid var(--border)',
+    borderRadius: '7px',
+    padding: '9px 13px',
+    fontSize: '14px',
+    color: 'var(--text)',
+    fontFamily: 'DM Sans, sans-serif',
+    outline: 'none',
+    width: '100%',
+    cursor: 'pointer',
   },
   label: {
     display: 'block',
@@ -150,6 +184,26 @@ const S = {
     fontFamily: 'DM Sans, sans-serif',
     fontSize: '14px',
   },
+  filterBar: {
+    display: 'flex',
+    gap: '8px',
+    marginBottom: '16px',
+  },
+}
+
+function btnFiltro(ativo) {
+  return {
+    padding: '6px 14px',
+    borderRadius: '6px',
+    border: ativo ? '2px solid var(--accent)' : '1px solid var(--border)',
+    background: ativo ? 'var(--accent)' : 'transparent',
+    color: ativo ? '#fff' : 'var(--text-muted)',
+    fontFamily: 'Syne, sans-serif',
+    fontWeight: ativo ? 600 : 400,
+    fontSize: '12px',
+    cursor: 'pointer',
+    transition: 'all 0.15s',
+  }
 }
 
 function Input({ style, ...props }) {
@@ -186,8 +240,9 @@ export default function Servicos() {
   const [servicos, setServicos] = useState([])
   const [open, setOpen] = useState(false)
   const [busca, setBusca] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('todos')
   const [categorias, setCategorias] = useState([])
-  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '' })
+  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
 
   useEffect(() => { fetchServicos() }, [])
 
@@ -207,7 +262,7 @@ export default function Servicos() {
     const { error } = await supabase.from('servicos').insert([form])
     if (error) { alert('Erro: ' + error.message); return }
     setOpen(false)
-    setForm({ nome: '', descricao: '', categoria: '' })
+    setForm({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
     fetchServicos()
   }
 
@@ -217,10 +272,12 @@ export default function Servicos() {
     fetchServicos()
   }
 
-  const servicosFiltrados = servicos.filter(s =>
-    s.nome.toLowerCase().includes(busca.toLowerCase()) ||
-    (s.categoria || '').toLowerCase().includes(busca.toLowerCase())
-  )
+  const servicosFiltrados = servicos.filter(s => {
+    const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) ||
+      (s.categoria || '').toLowerCase().includes(busca.toLowerCase())
+    const matchTipo = filtroTipo === 'todos' || s.tipo_servico === filtroTipo
+    return matchBusca && matchTipo
+  })
 
   return (
     <div>
@@ -229,12 +286,22 @@ export default function Servicos() {
         <button style={S.btnPrimary} onClick={() => setOpen(true)}>+ Novo Serviço</button>
       </div>
 
-      <div style={S.searchWrap}>
-        <Input
-          value={busca}
-          onChange={e => setBusca(e.target.value)}
-          placeholder="Buscar por nome ou categoria..."
-        />
+      <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', marginBottom: '16px', flexWrap: 'wrap' }}>
+        <div style={{ ...S.searchWrap, marginBottom: 0 }}>
+          <Input
+            value={busca}
+            onChange={e => setBusca(e.target.value)}
+            placeholder="Buscar por nome ou categoria..."
+          />
+        </div>
+        <div style={S.filterBar}>
+          <button style={btnFiltro(filtroTipo === 'todos')} onClick={() => setFiltroTipo('todos')}>Todos</button>
+          {TIPOS.map(t => (
+            <button key={t.value} style={btnFiltro(filtroTipo === t.value)} onClick={() => setFiltroTipo(t.value)}>
+              {t.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div style={S.card}>
@@ -242,6 +309,7 @@ export default function Servicos() {
           <thead>
             <tr>
               <th style={S.th}>Nome</th>
+              <th style={S.th}>Tipo</th>
               <th style={S.th}>Categoria</th>
               <th style={S.th}>Descrição</th>
               <th style={S.th}></th>
@@ -257,6 +325,11 @@ export default function Servicos() {
               >
                 <td style={{ ...S.td, fontWeight: 500 }}>{s.nome}</td>
                 <td style={S.td}>
+                  <span style={tipoBadgeStyle(s.tipo_servico)}>
+                    {TIPOS.find(t => t.value === s.tipo_servico)?.label || 'Serviço'}
+                  </span>
+                </td>
+                <td style={S.td}>
                   {s.categoria
                     ? <span style={S.badge}>{s.categoria}</span>
                     : <span style={{ color: 'var(--text-faint)' }}>—</span>}
@@ -268,7 +341,7 @@ export default function Servicos() {
               </tr>
             ))}
             {servicosFiltrados.length === 0 && (
-              <tr><td colSpan={4} style={S.emptyState}>Nenhum serviço cadastrado</td></tr>
+              <tr><td colSpan={5} style={S.emptyState}>Nenhum serviço encontrado</td></tr>
             )}
           </tbody>
         </table>
@@ -279,6 +352,16 @@ export default function Servicos() {
           <div>
             <Label>Nome</Label>
             <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
+          </div>
+          <div>
+            <Label>Tipo</Label>
+            <select
+              style={S.select}
+              value={form.tipo_servico}
+              onChange={e => setForm(f => ({ ...f, tipo_servico: e.target.value }))}
+            >
+              {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
           </div>
           <div>
             <Label>Categoria</Label>

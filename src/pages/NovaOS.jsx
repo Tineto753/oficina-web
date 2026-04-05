@@ -2,6 +2,29 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
+const TIPOS = [
+  { value: 'servico', label: 'Serviço', color: 'var(--accent)' },
+  { value: 'peca', label: 'Peça', color: 'var(--success)' },
+  { value: 'terceirizado', label: 'Terceirizado', color: 'var(--text-muted)' },
+]
+
+function tipoBadgeStyle(tipo) {
+  const t = TIPOS.find(t => t.value === tipo) || TIPOS[0]
+  return {
+    display: 'inline-block',
+    padding: '2px 7px',
+    borderRadius: '4px',
+    fontSize: '10px',
+    fontWeight: 600,
+    fontFamily: 'Syne, sans-serif',
+    letterSpacing: '0.04em',
+    color: t.color,
+    border: `1px solid ${t.color}`,
+    background: 'transparent',
+    whiteSpace: 'nowrap',
+  }
+}
+
 const S = {
   h1: {
     fontFamily: 'Syne, sans-serif',
@@ -200,7 +223,7 @@ function Label({ children }) {
 
 function NovoServicoModal({ onSalvo }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '' })
+  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
   const [categorias, setCategorias] = useState([])
 
   useEffect(() => {
@@ -219,7 +242,7 @@ function NovoServicoModal({ onSalvo }) {
     if (error) { alert('Erro: ' + error.message); return }
     onSalvo(data)
     setOpen(false)
-    setForm({ nome: '', descricao: '', categoria: '' })
+    setForm({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
   }
 
   if (!open) return (
@@ -239,6 +262,16 @@ function NovoServicoModal({ onSalvo }) {
           <div>
             <Label>Nome</Label>
             <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
+          </div>
+          <div>
+            <Label>Tipo</Label>
+            <select
+              style={S.select}
+              value={form.tipo_servico}
+              onChange={e => setForm(f => ({ ...f, tipo_servico: e.target.value }))}
+            >
+              {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
           </div>
           <div>
             <Label>Categoria</Label>
@@ -320,6 +353,7 @@ export default function NovaOS() {
     setServicos(sv => [...sv, {
       servico_id: servicoId,
       nome: svc.nome,
+      tipo_servico: svc.tipo_servico || 'servico',
       preco_cobrado: parseFloat(preco),
       observacoes: obsServico
     }])
@@ -336,7 +370,6 @@ export default function NovaOS() {
 
     const valorTotal = servicos.reduce((acc, s) => acc + s.preco_cobrado, 0)
     const agora = new Date().toISOString()
-
     const osData = {
       cliente_id: clienteSelecionado.id,
       veiculo_id: veiculoId,
@@ -367,6 +400,12 @@ export default function NovaOS() {
   }
 
   const totalOS = servicos.reduce((acc, s) => acc + s.preco_cobrado, 0)
+
+  // Agrupa serviços disponíveis por tipo para o select
+  const servicosAgrupados = TIPOS.map(t => ({
+    ...t,
+    itens: servicosDisponiveis.filter(s => (s.tipo_servico || 'servico') === t.value)
+  })).filter(g => g.itens.length > 0)
 
   return (
     <div style={{ maxWidth: '680px', margin: '0 auto' }}>
@@ -410,7 +449,6 @@ export default function NovaOS() {
             </div>
           )}
         </div>
-
         {clienteSelecionado && veiculos.length > 0 && (
           <div style={{ marginTop: '14px' }}>
             <Label>Veículo</Label>
@@ -424,7 +462,6 @@ export default function NovaOS() {
             </select>
           </div>
         )}
-
         {clienteSelecionado && veiculos.length === 0 && (
           <p style={{ fontSize: '13px', color: 'var(--accent)', marginTop: '10px' }}>
             Este cliente não tem veículos cadastrados.
@@ -454,8 +491,12 @@ export default function NovaOS() {
           <div style={{ flex: 1 }}>
             <select style={S.select} value={servicoId} onChange={e => setServicoId(e.target.value)}>
               <option value="">Selecione o serviço</option>
-              {servicosDisponiveis.map(s => (
-                <option key={s.id} value={s.id}>{s.nome}</option>
+              {servicosAgrupados.map(grupo => (
+                <optgroup key={grupo.value} label={grupo.label}>
+                  {grupo.itens.map(s => (
+                    <option key={s.id} value={s.id}>{s.nome}</option>
+                  ))}
+                </optgroup>
               ))}
             </select>
           </div>
@@ -480,6 +521,7 @@ export default function NovaOS() {
             <thead>
               <tr>
                 <th style={S.th}>Serviço</th>
+                <th style={S.th}>Tipo</th>
                 <th style={S.th}>Obs</th>
                 <th style={{ ...S.th, textAlign: 'right' }}>Preço</th>
                 <th style={S.th}></th>
@@ -488,7 +530,12 @@ export default function NovaOS() {
             <tbody>
               {servicos.map(s => (
                 <tr key={s.servico_id}>
-                  <td style={S.td}>{s.nome}</td>
+                  <td style={{ ...S.td, fontWeight: 500 }}>{s.nome}</td>
+                  <td style={S.td}>
+                    <span style={tipoBadgeStyle(s.tipo_servico)}>
+                      {TIPOS.find(t => t.value === s.tipo_servico)?.label || 'Serviço'}
+                    </span>
+                  </td>
                   <td style={{ ...S.td, color: 'var(--text-faint)', fontSize: '12px' }}>{s.observacoes || '—'}</td>
                   <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {s.preco_cobrado.toFixed(2)}</td>
                   <td style={{ ...S.td, textAlign: 'right' }}>
@@ -503,6 +550,7 @@ export default function NovaOS() {
               ))}
               <tr>
                 <td style={{ ...S.td, ...S.totalRow, borderBottom: 'none' }}>Total</td>
+                <td style={{ borderBottom: 'none' }}></td>
                 <td style={{ borderBottom: 'none' }}></td>
                 <td style={{ ...S.td, ...S.totalRow, textAlign: 'right', borderBottom: 'none' }}>R$ {totalOS.toFixed(2)}</td>
                 <td style={{ borderBottom: 'none' }}></td>
