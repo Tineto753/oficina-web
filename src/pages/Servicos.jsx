@@ -134,18 +134,6 @@ const S = {
     color: 'var(--text)',
     borderBottom: '1px solid var(--border)',
   },
-  badge: {
-    display: 'inline-block',
-    padding: '2px 8px',
-    borderRadius: '4px',
-    fontSize: '11px',
-    fontWeight: 600,
-    fontFamily: 'Syne, sans-serif',
-    letterSpacing: '0.04em',
-    background: 'var(--accent-subtle)',
-    color: 'var(--accent)',
-    border: '1px solid var(--accent)',
-  },
   overlay: {
     position: 'fixed',
     inset: 0,
@@ -188,6 +176,20 @@ const S = {
     display: 'flex',
     gap: '8px',
     marginBottom: '16px',
+  },
+  hint: {
+    fontSize: '11px',
+    color: 'var(--text-faint)',
+    marginTop: '4px',
+    display: 'block',
+    fontFamily: 'DM Sans, sans-serif',
+  },
+  erro: {
+    fontSize: '11px',
+    color: 'var(--danger)',
+    marginTop: '4px',
+    display: 'block',
+    fontFamily: 'DM Sans, sans-serif',
   },
 }
 
@@ -241,8 +243,8 @@ export default function Servicos() {
   const [open, setOpen] = useState(false)
   const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
-  const [categorias, setCategorias] = useState([])
-  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
+  const [form, setForm] = useState({ nome: '', descricao: '', tipo_servico: 'servico' })
+  const [nomeErro, setNomeErro] = useState('')
 
   useEffect(() => { fetchServicos() }, [])
 
@@ -253,16 +255,30 @@ export default function Servicos() {
       .eq('ativo', true)
       .order('nome')
     setServicos(data || [])
-    const unicas = [...new Set((data || []).map(s => s.categoria).filter(Boolean))]
-    setCategorias(unicas)
+  }
+
+  function handleNomeChange(valor) {
+    const temInvalido = /[^a-zA-ZÀ-ÿ ]/.test(valor)
+    setNomeErro(temInvalido ? 'Use apenas letras e espaço.' : '')
+    setForm(f => ({ ...f, nome: valor }))
   }
 
   async function handleSalvar() {
     if (!form.nome) { alert('Nome é obrigatório'); return }
-    const { error } = await supabase.from('servicos').insert([form])
+    if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
+    const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ ]/g, '')
+    const { data: existente } = await supabase
+      .from('servicos')
+      .select('id')
+      .eq('nome', nomeNormalizado)
+      .eq('ativo', true)
+      .maybeSingle()
+    if (existente) { alert('Já existe um serviço com este nome.'); return }
+    const { error } = await supabase.from('servicos').insert([{ ...form, nome: nomeNormalizado }])
     if (error) { alert('Erro: ' + error.message); return }
     setOpen(false)
-    setForm({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
+    setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
+    setNomeErro('')
     fetchServicos()
   }
 
@@ -273,11 +289,16 @@ export default function Servicos() {
   }
 
   const servicosFiltrados = servicos.filter(s => {
-    const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase()) ||
-      (s.categoria || '').toLowerCase().includes(busca.toLowerCase())
+    const matchBusca = s.nome.toLowerCase().includes(busca.toLowerCase())
     const matchTipo = filtroTipo === 'todos' || s.tipo_servico === filtroTipo
     return matchBusca && matchTipo
   })
+
+  function fecharModal() {
+    setOpen(false)
+    setNomeErro('')
+    setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
+  }
 
   return (
     <div>
@@ -291,7 +312,7 @@ export default function Servicos() {
           <Input
             value={busca}
             onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por nome ou categoria..."
+            placeholder="Buscar por nome..."
           />
         </div>
         <div style={S.filterBar}>
@@ -310,7 +331,6 @@ export default function Servicos() {
             <tr>
               <th style={S.th}>Nome</th>
               <th style={S.th}>Tipo</th>
-              <th style={S.th}>Categoria</th>
               <th style={S.th}>Descrição</th>
               <th style={S.th}></th>
             </tr>
@@ -329,11 +349,6 @@ export default function Servicos() {
                     {TIPOS.find(t => t.value === s.tipo_servico)?.label || 'Serviço'}
                   </span>
                 </td>
-                <td style={S.td}>
-                  {s.categoria
-                    ? <span style={S.badge}>{s.categoria}</span>
-                    : <span style={{ color: 'var(--text-faint)' }}>—</span>}
-                </td>
                 <td style={{ ...S.td, color: 'var(--text-muted)' }}>{s.descricao || '—'}</td>
                 <td style={{ ...S.td, textAlign: 'right' }}>
                   <button style={S.btnDanger} onClick={() => handleRemover(s.id)}>Remover</button>
@@ -341,17 +356,23 @@ export default function Servicos() {
               </tr>
             ))}
             {servicosFiltrados.length === 0 && (
-              <tr><td colSpan={5} style={S.emptyState}>Nenhum serviço encontrado</td></tr>
+              <tr><td colSpan={4} style={S.emptyState}>Nenhum serviço encontrado</td></tr>
             )}
           </tbody>
         </table>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)} title="Novo Serviço">
+      <Modal open={open} onClose={fecharModal} title="Novo Serviço">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <Label>Nome</Label>
-            <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
+            <Input
+              value={form.nome}
+              onChange={e => handleNomeChange(e.target.value)}
+              placeholder="Ex: troca de oleo"
+            />
+            {nomeErro && <span style={S.erro}>{nomeErro}</span>}
+            <span style={S.hint}>Apenas letras e espaço. Será salvo em minúsculo.</span>
           </div>
           <div>
             <Label>Tipo</Label>
@@ -364,23 +385,15 @@ export default function Servicos() {
             </select>
           </div>
           <div>
-            <Label>Categoria</Label>
-            <Input
-              value={form.categoria}
-              onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))}
-              placeholder="Ex: Revisão, Elétrica, Freios"
-              list="categorias-list"
-            />
-            <datalist id="categorias-list">
-              {categorias.map(c => <option key={c} value={c} />)}
-            </datalist>
-          </div>
-          <div>
             <Label>Descrição</Label>
-            <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} placeholder="Detalhes opcionais" />
+            <Input
+              value={form.descricao}
+              onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
+              placeholder="Detalhes opcionais"
+            />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-            <button style={S.btnSecondary} onClick={() => setOpen(false)}>Cancelar</button>
+            <button style={S.btnSecondary} onClick={fecharModal}>Cancelar</button>
             <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
           </div>
         </div>

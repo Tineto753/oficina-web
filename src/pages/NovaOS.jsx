@@ -121,11 +121,6 @@ const S = {
     textTransform: 'uppercase',
     marginBottom: '14px',
   },
-  divider: {
-    border: 'none',
-    borderTop: '1px solid var(--border)',
-    margin: '14px 0',
-  },
   autocompleteWrap: {
     position: 'relative',
   },
@@ -204,6 +199,20 @@ const S = {
     marginBottom: '20px',
     letterSpacing: '-0.02em',
   },
+  hint: {
+    fontSize: '11px',
+    color: 'var(--text-faint)',
+    marginTop: '4px',
+    display: 'block',
+    fontFamily: 'DM Sans, sans-serif',
+  },
+  erro: {
+    fontSize: '11px',
+    color: 'var(--danger)',
+    marginTop: '4px',
+    display: 'block',
+    fontFamily: 'DM Sans, sans-serif',
+  },
 }
 
 function Input({ style, ...props }) {
@@ -223,26 +232,36 @@ function Label({ children }) {
 
 function NovoServicoModal({ onSalvo }) {
   const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
-  const [categorias, setCategorias] = useState([])
+  const [form, setForm] = useState({ nome: '', descricao: '', tipo_servico: 'servico' })
+  const [nomeErro, setNomeErro] = useState('')
 
-  useEffect(() => {
-    if (open) fetchCategorias()
-  }, [open])
+  function handleNomeChange(valor) {
+    const temInvalido = /[^a-zA-ZÀ-ÿ ]/.test(valor)
+    setNomeErro(temInvalido ? 'Use apenas letras e espaço.' : '')
+    setForm(f => ({ ...f, nome: valor }))
+  }
 
-  async function fetchCategorias() {
-    const { data } = await supabase.from('servicos').select('categoria').eq('ativo', true)
-    const unicas = [...new Set((data || []).map(s => s.categoria).filter(Boolean))]
-    setCategorias(unicas)
+  function fechar() {
+    setOpen(false)
+    setNomeErro('')
+    setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
   }
 
   async function handleSalvar() {
     if (!form.nome) { alert('Nome é obrigatório'); return }
-    const { data, error } = await supabase.from('servicos').insert([form]).select().single()
+    if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
+    const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ ]/g, '')
+    const { data: existente } = await supabase
+      .from('servicos')
+      .select('id')
+      .eq('nome', nomeNormalizado)
+      .eq('ativo', true)
+      .maybeSingle()
+    if (existente) { alert('Já existe um serviço com este nome.'); return }
+    const { data, error } = await supabase.from('servicos').insert([{ ...form, nome: nomeNormalizado }]).select().single()
     if (error) { alert('Erro: ' + error.message); return }
     onSalvo(data)
-    setOpen(false)
-    setForm({ nome: '', descricao: '', categoria: '', tipo_servico: 'servico' })
+    fechar()
   }
 
   if (!open) return (
@@ -252,16 +271,22 @@ function NovoServicoModal({ onSalvo }) {
   )
 
   return (
-    <div style={S.overlay} onClick={e => e.target === e.currentTarget && setOpen(false)}>
+    <div style={S.overlay} onClick={e => e.target === e.currentTarget && fechar()}>
       <div style={S.modal}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
           <h2 style={S.modalTitle}>Novo Serviço</h2>
-          <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+          <button onClick={fechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <Label>Nome</Label>
-            <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Troca de óleo" />
+            <Input
+              value={form.nome}
+              onChange={e => handleNomeChange(e.target.value)}
+              placeholder="Ex: troca de oleo"
+            />
+            {nomeErro && <span style={S.erro}>{nomeErro}</span>}
+            <span style={S.hint}>Apenas letras e espaço. Será salvo em minúsculo.</span>
           </div>
           <div>
             <Label>Tipo</Label>
@@ -274,16 +299,14 @@ function NovoServicoModal({ onSalvo }) {
             </select>
           </div>
           <div>
-            <Label>Categoria</Label>
-            <Input value={form.categoria} onChange={e => setForm(f => ({ ...f, categoria: e.target.value }))} placeholder="Ex: Revisão, Freios" list="cats" />
-            <datalist id="cats">{categorias.map(c => <option key={c} value={c} />)}</datalist>
-          </div>
-          <div>
             <Label>Descrição</Label>
-            <Input value={form.descricao} onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))} />
+            <Input
+              value={form.descricao}
+              onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
+            />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button style={S.btnSecondary} onClick={() => setOpen(false)}>Cancelar</button>
+            <button style={S.btnSecondary} onClick={fechar}>Cancelar</button>
             <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
           </div>
         </div>
@@ -306,8 +329,10 @@ export default function NovaOS() {
   const [servicosDisponiveis, setServicosDisponiveis] = useState([])
   const [servicoId, setServicoId] = useState('')
   const [preco, setPreco] = useState('')
+  const [quantidade, setQuantidade] = useState('1')
   const [obsServico, setObsServico] = useState('')
   const [validadeDias, setValidadeDias] = useState(30)
+  const [dataEntrada, setDataEntrada] = useState(new Date().toISOString().split('T')[0])
 
   useEffect(() => {
     fetchServicosDisponiveis()
@@ -350,25 +375,26 @@ export default function NovaOS() {
     if (!servicoId || !preco) { alert('Selecione o serviço e informe o preço'); return }
     if (servicos.find(s => s.servico_id === servicoId)) { alert('Serviço já adicionado'); return }
     const svc = servicosDisponiveis.find(s => s.id === servicoId)
+    const qtd = Math.max(1, parseInt(quantidade) || 1)
     setServicos(sv => [...sv, {
       servico_id: servicoId,
       nome: svc.nome,
       tipo_servico: svc.tipo_servico || 'servico',
+      quantidade: qtd,
       preco_cobrado: parseFloat(preco),
       observacoes: obsServico
     }])
     setServicoId('')
     setPreco('')
+    setQuantidade('1')
     setObsServico('')
   }
 
   async function handleSalvar() {
     if (!clienteSelecionado) { alert('Selecione um cliente'); return }
     if (!veiculoId) { alert('Selecione um veículo'); return }
-    if (tipo === 'aberta' && !kmEntrada) { alert('Informe o KM de entrada'); return }
     if (servicos.length === 0) { alert('Adicione pelo menos um serviço'); return }
-
-    const valorTotal = servicos.reduce((acc, s) => acc + s.preco_cobrado, 0)
+    const valorTotal = servicos.reduce((acc, s) => acc + s.quantidade * s.preco_cobrado, 0)
     const agora = new Date().toISOString()
     const osData = {
       cliente_id: clienteSelecionado.id,
@@ -377,31 +403,26 @@ export default function NovaOS() {
       km_entrada: tipo === 'aberta' ? parseInt(kmEntrada) : null,
       observacoes,
       valor_total: valorTotal,
-      aberta_em: tipo === 'aberta' ? agora : null,
+      aberta_em: tipo === 'aberta' ? new Date(dataEntrada + 'T12:00:00').toISOString() : null,
       validade_orcamento: tipo === 'orcamento'
         ? new Date(Date.now() + validadeDias * 86400000).toISOString()
         : null
     }
-
     const { data: os, error } = await supabase.from('ordens_servico').insert([osData]).select().single()
     if (error) { alert('Erro: ' + error.message); return }
-
     await supabase.from('os_servicos').insert(
-      servicos.map(s => ({ os_id: os.id, servico_id: s.servico_id, preco_cobrado: s.preco_cobrado, observacoes: s.observacoes }))
+      servicos.map(s => ({ os_id: os.id, servico_id: s.servico_id, quantidade: s.quantidade, preco_cobrado: s.preco_cobrado, observacoes: s.observacoes }))
     )
-
     if (tipo === 'aberta' && kmEntrada) {
       await supabase.from('km_registros').insert([{
         veiculo_id: veiculoId, os_id: os.id, km: parseInt(kmEntrada), origem: 'entrada_os'
       }])
     }
-
     navigate('/os')
   }
 
-  const totalOS = servicos.reduce((acc, s) => acc + s.preco_cobrado, 0)
+  const totalOS = servicos.reduce((acc, s) => acc + s.quantidade * s.preco_cobrado, 0)
 
-  // Agrupa serviços disponíveis por tipo para o select
   const servicosAgrupados = TIPOS.map(t => ({
     ...t,
     itens: servicosDisponiveis.filter(s => (s.tipo_servico || 'servico') === t.value)
@@ -469,11 +490,20 @@ export default function NovaOS() {
         )}
       </div>
 
-      {/* KM */}
+      {/* KM e Data de Entrada */}
       {tipo === 'aberta' && (
         <div style={S.section}>
-          <p style={S.sectionTitle}>KM de Entrada</p>
-          <Input type="number" value={kmEntrada} onChange={e => setKmEntrada(e.target.value)} placeholder="Ex: 52000" style={{ maxWidth: '200px' }} />
+          <p style={S.sectionTitle}>Entrada</p>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div>
+              <Label>Data de Entrada</Label>
+              <Input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} />
+            </div>
+            <div>
+              <Label>KM de Entrada</Label>
+              <Input type="number" value={kmEntrada} onChange={e => setKmEntrada(e.target.value)} placeholder="Ex: 52000" />
+            </div>
+          </div>
         </div>
       )}
 
@@ -486,7 +516,6 @@ export default function NovaOS() {
             setServicoId(svc.id)
           }} />
         </div>
-
         <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
           <div style={{ flex: 1 }}>
             <select style={S.select} value={servicoId} onChange={e => setServicoId(e.target.value)}>
@@ -502,6 +531,14 @@ export default function NovaOS() {
           </div>
           <Input
             type="number"
+            value={quantidade}
+            onChange={e => setQuantidade(e.target.value)}
+            placeholder="Qtd"
+            min="1"
+            style={{ width: '70px' }}
+          />
+          <Input
+            type="number"
             value={preco}
             onChange={e => setPreco(e.target.value)}
             placeholder="R$ preço"
@@ -509,35 +546,38 @@ export default function NovaOS() {
           />
           <button style={S.btnPrimary} onClick={adicionarServico}>Adicionar</button>
         </div>
-
         {servicoId && (
           <div style={{ marginBottom: '12px' }}>
             <Input value={obsServico} onChange={e => setObsServico(e.target.value)} placeholder="Observação do serviço (opcional)" />
           </div>
         )}
-
         {servicos.length > 0 ? (
           <table style={S.table}>
             <thead>
               <tr>
                 <th style={S.th}>Serviço</th>
                 <th style={S.th}>Tipo</th>
-                <th style={S.th}>Obs</th>
-                <th style={{ ...S.th, textAlign: 'right' }}>Preço</th>
+                <th style={{ ...S.th, textAlign: 'center' }}>Qtd</th>
+                <th style={{ ...S.th, textAlign: 'right' }}>Unit.</th>
+                <th style={{ ...S.th, textAlign: 'right' }}>Total</th>
                 <th style={S.th}></th>
               </tr>
             </thead>
             <tbody>
               {servicos.map(s => (
                 <tr key={s.servico_id}>
-                  <td style={{ ...S.td, fontWeight: 500 }}>{s.nome}</td>
+                  <td style={{ ...S.td, fontWeight: 500 }}>
+                    {s.nome}
+                    {s.observacoes && <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: '11px', fontWeight: 400 }}>{s.observacoes}</span>}
+                  </td>
                   <td style={S.td}>
                     <span style={tipoBadgeStyle(s.tipo_servico)}>
                       {TIPOS.find(t => t.value === s.tipo_servico)?.label || 'Serviço'}
                     </span>
                   </td>
-                  <td style={{ ...S.td, color: 'var(--text-faint)', fontSize: '12px' }}>{s.observacoes || '—'}</td>
-                  <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {s.preco_cobrado.toFixed(2)}</td>
+                  <td style={{ ...S.td, textAlign: 'center', color: 'var(--text-muted)' }}>{s.quantidade}×</td>
+                  <td style={{ ...S.td, textAlign: 'right', color: 'var(--text-muted)' }}>R$ {s.preco_cobrado.toFixed(2)}</td>
+                  <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {(s.quantidade * s.preco_cobrado).toFixed(2)}</td>
                   <td style={{ ...S.td, textAlign: 'right' }}>
                     <button
                       onClick={() => setServicos(sv => sv.filter(x => x.servico_id !== s.servico_id))}
@@ -550,6 +590,7 @@ export default function NovaOS() {
               ))}
               <tr>
                 <td style={{ ...S.td, ...S.totalRow, borderBottom: 'none' }}>Total</td>
+                <td style={{ borderBottom: 'none' }}></td>
                 <td style={{ borderBottom: 'none' }}></td>
                 <td style={{ borderBottom: 'none' }}></td>
                 <td style={{ ...S.td, ...S.totalRow, textAlign: 'right', borderBottom: 'none' }}>R$ {totalOS.toFixed(2)}</td>

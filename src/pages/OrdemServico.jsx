@@ -219,31 +219,177 @@ function OSCard({ os, onAtualizado }) {
   const [itens, setItens] = useState([])
   const [formaPagamento, setFormaPagamento] = useState('')
   const [valorTotal, setValorTotal] = useState('')
+  const [parcelas, setParcelas] = useState('')
+  const [valorEntrada, setValorEntrada] = useState('')
   const [kmEntrada, setKmEntrada] = useState('')
+  const [dataAberta, setDataAberta] = useState('')
+  const [dataConclusao, setDataConclusao] = useState(new Date().toISOString().split('T')[0])
   const [loading, setLoading] = useState(false)
+
+  // edit mode
+  const [editando, setEditando] = useState(false)
+  const [itensEdit, setItensEdit] = useState([])
+  const [kmEdit, setKmEdit] = useState('')
+  const [obsEdit, setObsEdit] = useState('')
+  const [servicosDisponiveis, setServicosDisponiveis] = useState([])
+  const [novoServicoId, setNovoServicoId] = useState('')
+  const [novoPreco, setNovoPreco] = useState('')
+  const [novaQtd, setNovaQtd] = useState('1')
+  const [buscaClienteEdit, setBuscaClienteEdit] = useState('')
+  const [clienteEdit, setClienteEdit] = useState(null)
+  const [clientesEdit, setClientesEdit] = useState([])
+  const [veiculosEdit, setVeiculosEdit] = useState([])
+  const [veiculoIdEdit, setVeiculoIdEdit] = useState('')
+
   const isOrcamento = os.status === 'orcamento'
 
-  useEffect(() => { if (open) fetchItens() }, [open])
+  useEffect(() => {
+    if (open) {
+      fetchItens()
+      setDataAberta(os.aberta_em ? os.aberta_em.split('T')[0] : new Date().toISOString().split('T')[0])
+      setDataConclusao(new Date().toISOString().split('T')[0])
+      setEditando(false)
+    }
+  }, [open])
 
   async function fetchItens() {
     const { data } = await supabase
       .from('os_servicos')
-      .select('*, servicos(nome)')
+      .select('*, servicos(nome, tipo_servico)')
       .eq('os_id', os.id)
     setItens(data || [])
     setValorTotal(os.valor_total || '')
+  }
+
+  async function entrarEdicao() {
+    setItensEdit(itens.map(i => ({
+      id: i.id,
+      servico_id: i.servico_id,
+      nome: i.servicos?.nome,
+      tipo_servico: i.servicos?.tipo_servico || 'servico',
+      quantidade: i.quantidade || 1,
+      preco_cobrado: parseFloat(i.preco_cobrado),
+    })))
+    setKmEdit(os.km_entrada?.toString() || '')
+    setObsEdit(os.observacoes || '')
+    setBuscaClienteEdit(os.clientes?.nome_completo || '')
+    setClienteEdit({ id: os.cliente_id, nome_completo: os.clientes?.nome_completo })
+    setVeiculoIdEdit(os.veiculo_id || '')
+    const { data: veics } = await supabase
+      .from('veiculos')
+      .select('*, modelos(nome, marcas(nome))')
+      .eq('cliente_id', os.cliente_id)
+      .eq('ativo', true)
+    setVeiculosEdit(veics || [])
+    if (servicosDisponiveis.length === 0) {
+      const { data } = await supabase.from('servicos').select('*').eq('ativo', true).order('nome')
+      setServicosDisponiveis(data || [])
+    }
+    setEditando(true)
+  }
+
+  async function buscarClientesEdit(q) {
+    setBuscaClienteEdit(q)
+    setClienteEdit(null)
+    setVeiculosEdit([])
+    setVeiculoIdEdit('')
+    if (q.length < 2) { setClientesEdit([]); return }
+    const { data } = await supabase
+      .from('clientes')
+      .select('id, nome_completo, telefone')
+      .ilike('nome_completo', `%${q}%`)
+      .eq('ativo', true)
+      .limit(8)
+    setClientesEdit(data || [])
+  }
+
+  async function selecionarClienteEdit(c) {
+    setClienteEdit(c)
+    setBuscaClienteEdit(c.nome_completo)
+    setClientesEdit([])
+    setVeiculoIdEdit('')
+    const { data } = await supabase
+      .from('veiculos')
+      .select('*, modelos(nome, marcas(nome))')
+      .eq('cliente_id', c.id)
+      .eq('ativo', true)
+    setVeiculosEdit(data || [])
+  }
+
+  function adicionarItemEdit() {
+    if (!novoServicoId || !novoPreco) { alert('Selecione o serviço e informe o preço'); return }
+    if (itensEdit.find(i => i.servico_id === novoServicoId)) { alert('Serviço já adicionado'); return }
+    const svc = servicosDisponiveis.find(s => s.id === novoServicoId)
+    setItensEdit(prev => [...prev, {
+      id: null,
+      servico_id: novoServicoId,
+      nome: svc.nome,
+      tipo_servico: svc.tipo_servico || 'servico',
+      quantidade: Math.max(1, parseInt(novaQtd) || 1),
+      preco_cobrado: parseFloat(novoPreco),
+    }])
+    setNovoServicoId('')
+    setNovoPreco('')
+    setNovaQtd('1')
+  }
+
+  async function salvarEdicao() {
+    setLoading(true)
+    // itens removidos
+    const idsOriginais = itens.map(i => i.id)
+    const idsRestantes = itensEdit.filter(i => i.id).map(i => i.id)
+    const idsRemovidos = idsOriginais.filter(id => !idsRestantes.includes(id))
+    if (idsRemovidos.length > 0) {
+      await supabase.from('os_servicos').delete().in('id', idsRemovidos)
+    }
+    // itens novos
+    const novos = itensEdit.filter(i => !i.id)
+    if (novos.length > 0) {
+      await supabase.from('os_servicos').insert(novos.map(i => ({
+        os_id: os.id,
+        servico_id: i.servico_id,
+        quantidade: i.quantidade,
+        preco_cobrado: i.preco_cobrado,
+      })))
+    }
+    // atualiza OS
+    const novoTotal = itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0)
+    await supabase.from('ordens_servico').update({
+      cliente_id: clienteEdit?.id || os.cliente_id,
+      veiculo_id: veiculoIdEdit || os.veiculo_id,
+      km_entrada: kmEdit ? parseInt(kmEdit) : null,
+      observacoes: obsEdit || null,
+      valor_total: novoTotal,
+    }).eq('id', os.id)
+    await fetchItens()
+    setValorTotal(novoTotal)
+    setEditando(false)
+    setLoading(false)
+    onAtualizado()
+  }
+
+  async function salvarDataEntrada() {
+    await supabase.from('ordens_servico')
+      .update({ aberta_em: new Date(dataAberta + 'T12:00:00').toISOString() })
+      .eq('id', os.id)
   }
 
   async function handleConcluir() {
     if (!formaPagamento) { alert('Informe a forma de pagamento'); return }
     setLoading(true)
     const agora = new Date().toISOString()
+    const extra = {}
+    if (formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') {
+      if (parcelas) extra.parcelas = parseInt(parcelas)
+      if (valorEntrada) extra.valor_entrada = parseFloat(valorEntrada)
+    }
     const { error } = await supabase.from('ordens_servico').update({
       status: 'concluida',
       forma_pagamento: formaPagamento,
       valor_total: parseFloat(valorTotal),
       pago_em: agora,
-      concluida_em: agora
+      concluida_em: new Date(dataConclusao + 'T12:00:00').toISOString(),
+      ...extra
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
     setOpen(false)
@@ -316,16 +462,131 @@ function OSCard({ os, onAtualizado }) {
           </div>
         )}
         <div style={{ fontSize: '11px', color: 'var(--text-faint)', marginTop: '8px' }}>
-          {new Date(os.created_at).toLocaleDateString('pt-BR')}
+          {isOrcamento ? 'Criado' : 'Entrada'}: {new Date(os.aberta_em || os.created_at).toLocaleDateString('pt-BR')}
         </div>
       </div>
 
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal open={open} onClose={() => { setOpen(false); setEditando(false) }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={S.modalTitle}>{isOrcamento ? 'Orçamento' : 'OS Aberta'}</h2>
-          <button onClick={() => setOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+          <h2 style={S.modalTitle}>{editando ? 'Editar OS' : isOrcamento ? 'Orçamento' : 'OS Aberta'}</h2>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {!editando && (
+              <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={entrarEdicao}>
+                ✏️ Editar
+              </button>
+            )}
+            <button onClick={() => { setOpen(false); setEditando(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+          </div>
         </div>
 
+        {editando ? (
+          <>
+            <div style={{ marginBottom: '12px', position: 'relative' }}>
+              <Label>Cliente</Label>
+              <Input
+                value={buscaClienteEdit}
+                onChange={e => buscarClientesEdit(e.target.value)}
+                placeholder="Digite o nome..."
+              />
+              {clientesEdit.length > 0 && (
+                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: 'var(--bg-card)', border: '1px solid var(--border)', borderRadius: '7px', boxShadow: 'var(--shadow-md)', zIndex: 50, marginTop: '4px', overflow: 'hidden' }}>
+                  {clientesEdit.map(c => (
+                    <div
+                      key={c.id}
+                      style={{ padding: '10px 14px', cursor: 'pointer', fontSize: '14px', color: 'var(--text)', borderBottom: '1px solid var(--border)' }}
+                      onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
+                      onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+                      onClick={() => selecionarClienteEdit(c)}
+                    >
+                      <span style={{ fontWeight: 500 }}>{c.nome_completo}</span>
+                      <span style={{ color: 'var(--text-faint)', marginLeft: '10px', fontSize: '12px' }}>{c.telefone}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {veiculosEdit.length > 0 && (
+              <div style={{ marginBottom: '12px' }}>
+                <Label>Veículo</Label>
+                <select style={S.select} value={veiculoIdEdit} onChange={e => setVeiculoIdEdit(e.target.value)}>
+                  <option value="">Selecione o veículo</option>
+                  {veiculosEdit.map(v => (
+                    <option key={v.id} value={v.id}>
+                      {v.modelos?.marcas?.nome} {v.modelos?.nome} — {v.placa} ({v.ano_modelo})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+              <div>
+                <Label>KM de Entrada</Label>
+                <Input type="number" value={kmEdit} onChange={e => setKmEdit(e.target.value)} placeholder="Ex: 52000" />
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Input value={obsEdit} onChange={e => setObsEdit(e.target.value)} placeholder="Opcional" />
+              </div>
+            </div>
+
+            <hr style={S.divider} />
+
+            <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '11px', color: 'var(--text-faint)', marginBottom: '10px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Itens</p>
+            <table style={S.table}>
+              <tbody>
+                {itensEdit.map((item, idx) => (
+                  <tr key={item.id || `new-${idx}`}>
+                    <td style={S.td}>{item.nome}</td>
+                    <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
+                      {item.quantidade > 1 ? `${item.quantidade}×` : ''}
+                    </td>
+                    <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '90px' }}>
+                      R$ {(item.quantidade * item.preco_cobrado).toFixed(2)}
+                    </td>
+                    <td style={{ ...S.td, width: '30px', borderBottom: '1px solid var(--border)' }}>
+                      <button
+                        onClick={() => setItensEdit(prev => prev.filter((_, i) => i !== idx))}
+                        style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '14px', padding: '0 4px' }}
+                      >×</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+
+            <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+              <select
+                style={{ ...S.select, flex: 1 }}
+                value={novoServicoId}
+                onChange={e => setNovoServicoId(e.target.value)}
+              >
+                <option value="">+ Serviço</option>
+                {['servico', 'peca', 'terceirizado'].map(tipo => {
+                  const grupo = servicosDisponiveis.filter(s => (s.tipo_servico || 'servico') === tipo)
+                  if (!grupo.length) return null
+                  const labels = { servico: 'Serviços', peca: 'Peças', terceirizado: 'Terceirizados' }
+                  return <optgroup key={tipo} label={labels[tipo]}>{grupo.map(s => <option key={s.id} value={s.id}>{s.nome}</option>)}</optgroup>
+                })}
+              </select>
+              <Input type="number" value={novaQtd} onChange={e => setNovaQtd(e.target.value)} placeholder="Qtd" min="1" style={{ width: '60px' }} />
+              <Input type="number" value={novoPreco} onChange={e => setNovoPreco(e.target.value)} placeholder="R$" style={{ width: '90px' }} />
+              <button style={S.btnPrimary} onClick={adicionarItemEdit}>+</button>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
+              <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--success)' }}>
+                R$ {itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0).toFixed(2)}
+              </span>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button style={S.btnSecondary} onClick={() => setEditando(false)}>Cancelar</button>
+                <button style={S.btnPrimary} onClick={salvarEdicao} disabled={loading}>Salvar</button>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
         <div style={S.infoRow}>
           <span><b>Cliente:</b> {os.clientes?.nome_completo}</span>
         </div>
@@ -334,27 +595,67 @@ function OSCard({ os, onAtualizado }) {
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.05em' }}>{os.veiculos?.placa}</span>
         </div>
         {os.km_entrada && <div style={S.infoRow}><span><b>KM:</b> {os.km_entrada.toLocaleString()}</span></div>}
-        {os.aberta_em && <div style={S.infoRow}><span><b>Aberta em:</b> {new Date(os.aberta_em).toLocaleDateString('pt-BR')}</span></div>}
+        {!isOrcamento && (
+          <div style={{ ...S.infoRow, alignItems: 'center', gap: '8px' }}>
+            <span style={{ whiteSpace: 'nowrap' }}><b>Entrada:</b></span>
+            <input
+              type="date"
+              value={dataAberta}
+              onChange={e => setDataAberta(e.target.value)}
+              onBlur={salvarDataEntrada}
+              style={{ ...S.input, width: 'auto', padding: '4px 8px', fontSize: '13px' }}
+            />
+          </div>
+        )}
 
         <hr style={S.divider} />
 
-        <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Serviços</p>
-        <table style={S.table}>
-          <tbody>
-            {itens.map(i => (
-              <tr key={i.id}>
-                <td style={S.td}>{i.servicos?.nome}</td>
-                <td style={{ ...S.td, textAlign: 'right', fontWeight: 600 }}>R$ {parseFloat(i.preco_cobrado).toFixed(2)}</td>
-              </tr>
-            ))}
-            <tr>
-              <td style={{ ...S.td, fontWeight: 700, fontFamily: 'Syne, sans-serif', borderBottom: 'none' }}>Total</td>
-              <td style={{ ...S.td, textAlign: 'right', fontWeight: 700, color: 'var(--success)', fontSize: '16px', borderBottom: 'none' }}>
-                R$ {parseFloat(os.valor_total || 0).toFixed(2)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        {[
+          { value: 'servico', label: 'Serviços' },
+          { value: 'peca', label: 'Peças' },
+          { value: 'terceirizado', label: 'Terceirizados' },
+        ].map(grupo => {
+          const grupoItens = itens.filter(i => (i.servicos?.tipo_servico || 'servico') === grupo.value)
+          if (grupoItens.length === 0) return null
+          const subtotal = grupoItens.reduce((acc, i) => acc + (i.quantidade || 1) * parseFloat(i.preco_cobrado), 0)
+          return (
+            <div key={grupo.value} style={{ marginBottom: '16px' }}>
+              <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '11px', color: 'var(--text-faint)', marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                {grupo.label}
+              </p>
+              <table style={S.table}>
+                <tbody>
+                  {grupoItens.map(i => (
+                    <tr key={i.id}>
+                      <td style={S.td}>{i.servicos?.nome}</td>
+                      <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
+                        {(i.quantidade || 1) > 1 ? `${i.quantidade}×` : ''}
+                      </td>
+                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '100px' }}>
+                        R$ {((i.quantidade || 1) * parseFloat(i.preco_cobrado)).toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                  {grupoItens.length > 1 && (
+                    <tr>
+                      <td style={{ ...S.td, fontSize: '11px', color: 'var(--text-faint)', borderBottom: 'none' }}>Subtotal</td>
+                      <td style={{ borderBottom: 'none' }}></td>
+                      <td style={{ ...S.td, textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: 'none' }}>
+                        R$ {subtotal.toFixed(2)}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )
+        })}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--text)' }}>Total</span>
+          <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '18px', color: 'var(--success)' }}>
+            R$ {parseFloat(os.valor_total || 0).toFixed(2)}
+          </span>
+        </div>
 
         {os.observacoes && (
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '8px' }}>
@@ -378,18 +679,39 @@ function OSCard({ os, onAtualizado }) {
             <div style={{ ...S.grid2, marginBottom: '14px' }}>
               <div>
                 <Label>Forma de Pagamento</Label>
-                <select style={S.select} value={formaPagamento} onChange={e => setFormaPagamento(e.target.value)}>
+                <select style={S.select} value={formaPagamento} onChange={e => { setFormaPagamento(e.target.value); setParcelas(''); setValorEntrada('') }}>
                   <option value="">Selecione</option>
                   <option value="dinheiro">Dinheiro</option>
                   <option value="pix">Pix</option>
-                  <option value="cartao">Cartão</option>
+                  <option value="debito">Débito</option>
+                  <option value="credito">Crédito</option>
+                  <option value="parcelado">Parcelado</option>
+                  <option value="entrada_parcelado">Entrada + Parcelado</option>
                 </select>
               </div>
               <div>
                 <Label>Valor Total (R$)</Label>
                 <Input type="number" value={valorTotal} onChange={e => setValorTotal(e.target.value)} />
               </div>
+              <div>
+                <Label>Data de Conclusão</Label>
+                <Input type="date" value={dataConclusao} onChange={e => setDataConclusao(e.target.value)} />
+              </div>
             </div>
+            {(formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') && (
+              <div style={{ ...S.grid2, marginBottom: '14px' }}>
+                {formaPagamento === 'entrada_parcelado' && (
+                  <div>
+                    <Label>Valor de Entrada (R$)</Label>
+                    <Input type="number" value={valorEntrada} onChange={e => setValorEntrada(e.target.value)} placeholder="0,00" />
+                  </div>
+                )}
+                <div>
+                  <Label>Nº de Parcelas</Label>
+                  <Input type="number" value={parcelas} onChange={e => setParcelas(e.target.value)} placeholder="Ex: 3" min="2" />
+                </div>
+              </div>
+            )}
             <button style={{ ...S.btnPrimary, width: '100%', padding: '11px' }} onClick={handleConcluir} disabled={loading}>
               Concluir OS
             </button>
@@ -399,6 +721,8 @@ function OSCard({ os, onAtualizado }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
           <button style={S.btnDanger} onClick={handleCancelar}>Cancelar OS</button>
         </div>
+          </>
+        )}
       </Modal>
     </>
   )

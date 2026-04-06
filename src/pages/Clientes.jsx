@@ -234,7 +234,7 @@ function Modal({ open, onClose, title, children, maxWidth = '640px' }) {
 
 const FIPE_URL = 'https://fipe.parallelum.com.br/api/v2/cars/brands'
 
-function VeiculoModal({ clienteId, onSalvo }) {
+function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
   const [open, setOpen] = useState(false)
   const [marcas, setMarcas] = useState([])
   const [modelos, setModelos] = useState([])
@@ -247,7 +247,25 @@ function VeiculoModal({ clienteId, onSalvo }) {
     ano_fabricacao: '', ano_modelo: '', cor: '', chassi: '', observacoes: ''
   })
 
-  useEffect(() => { if (open) fetchMarcas() }, [open])
+  useEffect(() => {
+    if (!open) return
+    fetchMarcas().then(() => {
+      if (veiculo) {
+        const marcaId = veiculo.modelos?.marca_id || ''
+        setForm({
+          marca_id: marcaId,
+          modelo_id: veiculo.modelo_id || '',
+          placa: veiculo.placa || '',
+          ano_fabricacao: veiculo.ano_fabricacao?.toString() || '',
+          ano_modelo: veiculo.ano_modelo?.toString() || '',
+          cor: veiculo.cor || '',
+          chassi: veiculo.chassi || '',
+          observacoes: veiculo.observacoes || '',
+        })
+        if (marcaId) fetchModelos(marcaId)
+      }
+    })
+  }, [open])
 
   async function fetchMarcas() {
     const { data } = await supabase.from('marcas').select('*').eq('ativo', true).order('nome')
@@ -303,28 +321,44 @@ function VeiculoModal({ clienteId, onSalvo }) {
     setAddModelo(false)
   }
 
+  function handleClose() {
+    setOpen(false)
+    setAddMarca(false)
+    setAddModelo(false)
+    if (!veiculo) setForm({ marca_id: '', modelo_id: '', placa: '', ano_fabricacao: '', ano_modelo: '', cor: '', chassi: '', observacoes: '' })
+  }
+
   async function handleSalvar() {
     const placa = form.placa.toUpperCase().replace(/[^A-Z0-9]/g, '')
     if (placa.length !== 7) { alert('Placa inválida'); return }
-    const { error } = await supabase.from('veiculos').insert([{
-      cliente_id: clienteId,
+    const dados = {
       modelo_id: form.modelo_id,
       placa,
       ano_fabricacao: parseInt(form.ano_fabricacao),
       ano_modelo: parseInt(form.ano_modelo),
       cor: form.cor,
       chassi: form.chassi,
-      observacoes: form.observacoes
-    }])
-    if (error) { alert('Erro: ' + error.message); return }
-    setOpen(false)
+      observacoes: form.observacoes,
+    }
+    if (veiculo) {
+      const { error } = await supabase.from('veiculos').update(dados).eq('id', veiculo.id)
+      if (error) { alert('Erro: ' + error.message); return }
+    } else {
+      const { error } = await supabase.from('veiculos').insert([{ cliente_id: clienteId, ...dados }])
+      if (error) { alert('Erro: ' + error.message); return }
+    }
+    handleClose()
     onSalvo()
   }
 
   return (
     <>
-      <button style={S.btnPrimary} onClick={() => setOpen(true)}>+ Cadastrar Carro</button>
-      <Modal open={open} onClose={() => setOpen(false)} title="Cadastrar Veículo" maxWidth="520px">
+      {veiculo ? (
+        <button style={{ ...S.btnSecondary, padding: '4px 10px', fontSize: '12px' }} onClick={() => setOpen(true)}>Editar</button>
+      ) : (
+        <button style={S.btnPrimary} onClick={() => setOpen(true)}>+ Cadastrar Carro</button>
+      )}
+      <Modal open={open} onClose={handleClose} title={veiculo ? 'Editar Veículo' : 'Cadastrar Veículo'} maxWidth="520px">
         <div style={S.grid2}>
           <div style={S.colSpan2}>
             <Label>Marca</Label>
@@ -366,7 +400,12 @@ function VeiculoModal({ clienteId, onSalvo }) {
 
           <div>
             <Label>Placa</Label>
-            <Input value={form.placa} onChange={e => setForm(f => ({ ...f, placa: e.target.value }))} placeholder="ABC1234" maxLength={7} />
+            <Input
+              value={form.placa}
+              onChange={e => setForm(f => ({ ...f, placa: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '') }))}
+              placeholder="ABC1234"
+              maxLength={7}
+            />
           </div>
           <div>
             <Label>Cor</Label>
@@ -389,7 +428,7 @@ function VeiculoModal({ clienteId, onSalvo }) {
             <Input value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
           </div>
           <div style={{ ...S.colSpan2, display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
-            <button style={S.btnSecondary} onClick={() => setOpen(false)}>Cancelar</button>
+            <button style={S.btnSecondary} onClick={handleClose}>Cancelar</button>
             <button style={S.btnPrimary} onClick={handleSalvar} disabled={!form.modelo_id || !form.placa}>Salvar</button>
           </div>
         </div>
@@ -427,7 +466,7 @@ function ClienteModal({ cliente, onAtualizado }) {
   async function fetchVeiculos() {
     const { data } = await supabase
       .from('veiculos')
-      .select('*, modelos(nome, marcas(nome))')
+      .select('*, modelos(id, nome, marca_id, marcas(id, nome))')
       .eq('cliente_id', cliente.id)
       .eq('ativo', true)
     setVeiculos(data || [])
@@ -499,6 +538,7 @@ function ClienteModal({ cliente, onAtualizado }) {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '15px', color: 'var(--text-muted)', letterSpacing: '0.05em' }}>{v.placa}</span>
+                    <VeiculoModal veiculo={v} onSalvo={fetchVeiculos} />
                     <button
                       style={{ ...S.btnSecondary, padding: '4px 10px', fontSize: '12px' }}
                       onClick={async () => {
