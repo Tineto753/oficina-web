@@ -351,8 +351,10 @@ export default function Historico() {
   async function selecionarVeiculo(v, cliente) {
     const c = cliente || clienteSelecionado
     setVeiculo({ ...v, clientes: c })
+    setOs([])
+    setKms([])
+    setNotFound(false)
     setLoading(true)
-    resetResultados()
     await carregarHistorico(v.id)
     setLoading(false)
   }
