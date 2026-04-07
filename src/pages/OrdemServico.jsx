@@ -417,6 +417,136 @@ function OSCard({ os, onAtualizado }) {
     onAtualizado()
   }
 
+  function imprimir() {
+    const win = window.open('', '_blank', 'width=820,height=700')
+    const fmt = (v) => parseFloat(v || 0).toFixed(2)
+    const dataBR = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'
+    const labelPgto = { dinheiro: 'Dinheiro', pix: 'Pix', debito: 'Débito', credito: 'Crédito', parcelado: 'Parcelado', entrada_parcelado: 'Entrada + Parcelado' }
+    const grupos = [
+      { key: 'servico', label: 'Serviços' },
+      { key: 'peca', label: 'Peças' },
+      { key: 'terceirizado', label: 'Terceirizados' },
+    ]
+    const itensHtml = grupos.map(g => {
+      const gi = itens.filter(i => (i.servicos?.tipo_servico || 'servico') === g.key)
+      if (!gi.length) return ''
+      const rows = gi.map(i => `
+        <tr>
+          <td>${i.servicos?.nome || ''}</td>
+          <td style="text-align:center;width:40px">${(i.quantidade || 1) > 1 ? `${i.quantidade}×` : ''}</td>
+          <td style="text-align:right;width:100px">R$ ${fmt((i.quantidade || 1) * parseFloat(i.preco_cobrado))}</td>
+        </tr>`).join('')
+      return `<tr><td colspan="3" class="grupo-label">${g.label}</td></tr>${rows}`
+    }).join('')
+
+    const assinatura = (esq, dir) => `
+      <table class="assinatura-table">
+        <tr>
+          <td class="assinatura-cell">${esq}</td>
+          <td style="width:60px"></td>
+          <td class="assinatura-cell">${dir}</td>
+        </tr>
+      </table>`
+
+    win.document.write(`<!DOCTYPE html>
+<html lang="pt-BR"><head><meta charset="UTF-8">
+<title>Auto Almeida</title>
+<style>
+  @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
+
+  /* aviso só na tela */
+  .aviso-impressao { background: #fffbe6; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; color: #6b5000; }
+  @media print { .aviso-impressao { display: none; } }
+
+  .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 16px; }
+  .header-table td { vertical-align: middle; padding-bottom: 10px; }
+  .empresa { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .empresa-sub { font-size: 11px; color: #555; margin-top: 2px; }
+  .tipo-badge { font-size: 13px; font-weight: 700; border: 2px solid #111; padding: 5px 14px; text-align: center; }
+
+  .secao { margin-bottom: 14px; }
+  .secao-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin-bottom: 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
+  .info-table { width: 100%; border-collapse: collapse; }
+  .info-table td { font-size: 12px; padding: 2px 0; width: 50%; }
+
+  table.servicos { width: 100%; border-collapse: collapse; margin-top: 6px; }
+  table.servicos th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #555; border-bottom: 1px solid #999; padding: 5px 4px; text-align: left; }
+  table.servicos td { padding: 6px 4px; border-bottom: 1px solid #ddd; vertical-align: top; }
+  .grupo-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #666; background: #f0f0f0; padding: 4px 4px; border-bottom: none !important; }
+  .total-row td { font-weight: 700; font-size: 14px; border-top: 2px solid #111 !important; border-bottom: none !important; padding-top: 8px !important; }
+
+  .obs { font-size: 12px; color: #444; margin-top: 8px; }
+  .validade { font-size: 11px; color: #555; margin-top: 10px; }
+
+  .assinatura-table { width: 100%; border-collapse: collapse; margin-top: 56px; }
+  .assinatura-cell { border-top: 1px solid #555; padding-top: 6px; font-size: 11px; color: #555; text-align: center; }
+</style></head><body>
+
+<div class="aviso-impressao">
+  💡 Para melhor resultado: no diálogo de impressão, desmarque <b>"Cabeçalhos e rodapés"</b> (ou "Headers and footers").
+</div>
+
+<table class="header-table"><tr>
+  <td><div class="empresa">Auto Almeida</div><div class="empresa-sub">Oficina Mecânica</div></td>
+  <td style="text-align:right"><div class="tipo-badge">${isOrcamento ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}</div></td>
+</tr></table>
+
+<div class="secao">
+  <div class="secao-titulo">Cliente</div>
+  <table class="info-table"><tr>
+    <td><b>Nome:</b> ${os.clientes?.nome_completo || '—'}</td>
+    <td><b>Telefone:</b> ${os.clientes?.telefone || '—'}</td>
+  </tr></table>
+</div>
+
+<div class="secao">
+  <div class="secao-titulo">Veículo</div>
+  <table class="info-table">
+    <tr>
+      <td><b>Veículo:</b> ${os.veiculos?.modelos?.marcas?.nome || ''} ${os.veiculos?.modelos?.nome || ''}</td>
+      <td><b>Placa:</b> ${os.veiculos?.placa || '—'}</td>
+    </tr>
+    <tr>
+      <td><b>${isOrcamento ? 'Data:' : 'Entrada:'}</b> ${dataBR(os.aberta_em || os.created_at)}</td>
+      ${os.km_entrada ? `<td><b>KM:</b> ${os.km_entrada.toLocaleString('pt-BR')}</td>` : '<td></td>'}
+    </tr>
+  </table>
+</div>
+
+<div class="secao">
+  <div class="secao-titulo">Serviços</div>
+  <table class="servicos">
+    <thead><tr><th>Descrição</th><th style="text-align:center;width:40px">Qtd</th><th style="text-align:right;width:100px">Valor</th></tr></thead>
+    <tbody>
+      ${itensHtml}
+      <tr class="total-row">
+        <td>Total</td><td></td>
+        <td style="text-align:right">R$ ${fmt(os.valor_total)}</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+${os.observacoes ? `<p class="obs"><b>Observações:</b> ${os.observacoes}</p>` : ''}
+${os.forma_pagamento ? `<p class="obs" style="margin-top:6px"><b>Pagamento:</b> ${labelPgto[os.forma_pagamento] || os.forma_pagamento}</p>` : ''}
+
+${isOrcamento
+  ? `<p class="validade"><b>Válido até:</b> ${dataBR(os.validade_orcamento)}</p>${assinatura('Responsável — Auto Almeida', 'Aprovação do Cliente')}`
+  : assinatura('Responsável — Auto Almeida', 'Recebimento do Cliente')
+}
+
+<script>
+  window.onload = function() {
+    window.print()
+    window.onafterprint = function() { window.close() }
+  }
+</script>
+</body></html>`)
+    win.document.close()
+  }
+
   async function handleCancelar() {
     if (!confirm('Cancelar esta OS?')) return
     await supabase.from('ordens_servico').update({ status: 'cancelado' }).eq('id', os.id)
@@ -471,9 +601,14 @@ function OSCard({ os, onAtualizado }) {
           <h2 style={S.modalTitle}>{editando ? 'Editar OS' : isOrcamento ? 'Orçamento' : 'OS Aberta'}</h2>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             {!editando && (
-              <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={entrarEdicao}>
-                ✏️ Editar
-              </button>
+              <>
+                <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={imprimir}>
+                  🖨️ Imprimir
+                </button>
+                <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={entrarEdicao}>
+                  ✏️ Editar
+                </button>
+              </>
             )}
             <button onClick={() => { setOpen(false); setEditando(false) }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
           </div>
