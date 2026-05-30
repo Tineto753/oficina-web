@@ -19,7 +19,7 @@ export async function exportarPlanilha() {
   // OS concluídas
   const { data: ordens } = await supabase
     .from('ordens_servico')
-    .select('*, clientes(nome_completo), veiculos(placa), os_servicos(preco_cobrado, servicos(nome))')
+    .select('*, clientes(nome_completo), veiculos(placa), os_servicos(preco_cobrado, devolvido, servicos(nome))')
     .eq('status', 'concluida')
     .order('concluida_em', { ascending: false })
 
@@ -55,7 +55,7 @@ export async function exportarPlanilha() {
   const osRows = (ordens || []).map(o => ({
     'Cliente': o.clientes?.nome_completo || '',
     'Placa': o.veiculos?.placa || '',
-    'Serviços': (o.os_servicos || []).map(s => s.servicos?.nome).join(', '),
+    'Serviços': (o.os_servicos || []).filter(s => !s.devolvido).map(s => s.servicos?.nome).join(', '),
     'Valor Total': parseFloat(o.valor_total || 0).toFixed(2),
     'Forma Pagamento': o.forma_pagamento || '',
     'KM Entrada': o.km_entrada || '',

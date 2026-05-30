@@ -244,6 +244,7 @@ export default function Servicos() {
   const [busca, setBusca] = useState('')
   const [filtroTipo, setFiltroTipo] = useState('todos')
   const [form, setForm] = useState({ nome: '', descricao: '', tipo_servico: 'servico' })
+  const [editando, setEditando] = useState(null)
   const [nomeErro, setNomeErro] = useState('')
 
   useEffect(() => { fetchServicos() }, [])
@@ -258,15 +259,33 @@ export default function Servicos() {
   }
 
   function handleNomeChange(valor) {
-    const temInvalido = /[^a-zA-ZÀ-ÿ ]/.test(valor)
-    setNomeErro(temInvalido ? 'Use apenas letras e espaço.' : '')
+    const temInvalido = /[^a-zA-ZÀ-ÿ0-9 ]/.test(valor)
+    setNomeErro(temInvalido ? 'Use apenas letras, números e espaço.' : '')
     setForm(f => ({ ...f, nome: valor }))
   }
 
+  function abrirEdicao(s) {
+    setEditando(s)
+    setForm({ nome: s.nome, descricao: s.descricao || '', tipo_servico: s.tipo_servico || 'servico' })
+    setNomeErro('')
+    setOpen(true)
+  }
+
   async function handleSalvar() {
+    if (editando) {
+      if (!form.nome) { alert('Nome é obrigatório'); return }
+      if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
+      const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ0-9 ]/g, '')
+      const { error } = await supabase.from('servicos').update({ nome: nomeNormalizado, descricao: form.descricao, tipo_servico: form.tipo_servico }).eq('id', editando.id)
+      if (error) { alert('Erro: ' + error.message); return }
+      fecharModal()
+      fetchServicos()
+      return
+    }
+    // criação — lógica existente abaixo
     if (!form.nome) { alert('Nome é obrigatório'); return }
     if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
-    const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ ]/g, '')
+    const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ0-9 ]/g, '')
     const { data: existente } = await supabase
       .from('servicos')
       .select('id')
@@ -276,9 +295,7 @@ export default function Servicos() {
     if (existente) { alert('Já existe um serviço com este nome.'); return }
     const { error } = await supabase.from('servicos').insert([{ ...form, nome: nomeNormalizado }])
     if (error) { alert('Erro: ' + error.message); return }
-    setOpen(false)
-    setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
-    setNomeErro('')
+    fecharModal()
     fetchServicos()
   }
 
@@ -296,6 +313,7 @@ export default function Servicos() {
 
   function fecharModal() {
     setOpen(false)
+    setEditando(null)
     setNomeErro('')
     setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
   }
@@ -350,7 +368,8 @@ export default function Servicos() {
                   </span>
                 </td>
                 <td style={{ ...S.td, color: 'var(--text-muted)' }}>{s.descricao || '—'}</td>
-                <td style={{ ...S.td, textAlign: 'right' }}>
+                <td style={{ ...S.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <button style={{ ...S.btnSecondary, fontSize: '12px', padding: '4px 10px', marginRight: '6px' }} onClick={() => abrirEdicao(s)}>Editar</button>
                   <button style={S.btnDanger} onClick={() => handleRemover(s.id)}>Remover</button>
                 </td>
               </tr>
@@ -362,7 +381,7 @@ export default function Servicos() {
         </table>
       </div>
 
-      <Modal open={open} onClose={fecharModal} title="Novo Serviço">
+      <Modal open={open} onClose={fecharModal} title={editando ? 'Editar Serviço' : 'Novo Serviço'}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <Label>Nome</Label>
@@ -372,7 +391,7 @@ export default function Servicos() {
               placeholder="Ex: troca de oleo"
             />
             {nomeErro && <span style={S.erro}>{nomeErro}</span>}
-            <span style={S.hint}>Apenas letras e espaço. Será salvo em minúsculo.</span>
+            <span style={S.hint}>Letras, números e espaço. Será salvo em minúsculo.</span>
           </div>
           <div>
             <Label>Tipo</Label>

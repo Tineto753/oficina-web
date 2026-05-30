@@ -6,6 +6,9 @@ import OrdemServico from './pages/OrdemServico'
 import NovaOS from './pages/NovaOS'
 import Historico from './pages/Historico'
 import Configuracoes from './pages/Configuracoes'
+import Agenda from './pages/Agenda'
+import Fornecedores from './pages/Fornecedores'
+import Dashboard from './pages/Dashboard'
 import { exportarPlanilha } from './lib/exportar'
 
 function Navbar() {
@@ -20,8 +23,11 @@ function Navbar() {
   const links = [
     { to: '/', label: 'Clientes', exact: true },
     { to: '/servicos', label: 'Serviços' },
+    { to: '/fornecedores', label: 'Fornecedores' },
     { to: '/os', label: 'OS' },
     { to: '/historico', label: 'Histórico' },
+    { to: '/agenda', label: 'Agenda' },
+    { to: '/dashboard', label: 'Dashboard' },
     { to: '/configuracoes', label: 'Config.' },
   ]
 
@@ -131,9 +137,12 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Clientes />} />
             <Route path="/servicos" element={<Servicos />} />
+            <Route path="/fornecedores" element={<Fornecedores />} />
             <Route path="/os/nova" element={<NovaOS />} />
             <Route path="/os" element={<OrdemServico />} />
             <Route path="/historico" element={<Historico />} />
+            <Route path="/agenda" element={<Agenda />} />
+            <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
           </Routes>
         </main>

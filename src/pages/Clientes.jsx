@@ -507,7 +507,7 @@ function ClienteModal({ cliente, onAtualizado }) {
         {!editando ? (
           <>
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '12px' }}>
-              <button style={S.btnSecondary} onClick={abrirEdicao}>✏️ Editar</button>
+              <button style={S.btnSecondary} onClick={abrirEdicao}>Editar</button>
             </div>
             <div style={S.infoGrid}>
               <div style={S.infoItem}><b>Telefone:</b> {cliente.telefone}</div>
@@ -652,10 +652,12 @@ export default function Clientes() {
     }
   }
 
+  const norm = busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  const buscaNum = busca.replace(/\D/g, '')
   const clientesFiltrados = clientes.filter(c =>
-    c.nome_completo.toLowerCase().includes(busca.toLowerCase()) ||
-    c.cpf_cnpj.includes(busca) ||
-    c.telefone.includes(busca)
+    c.nome_completo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(norm) ||
+    (buscaNum && (c.cpf_cnpj || '').replace(/\D/g, '').includes(buscaNum)) ||
+    (buscaNum && (c.telefone || '').replace(/\D/g, '').includes(buscaNum))
   )
 
   return (

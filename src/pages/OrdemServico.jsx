@@ -1,6 +1,15 @@
-import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { parseValor, formatValor } from '../lib/utils'
+import { gerarHtmlOS } from '../lib/impressao'
+
+function toLocalInput(iso) {
+  if (!iso) return ''
+  const d = new Date(iso)
+  const pad = n => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
 
 const S = {
   header: {
@@ -214,11 +223,62 @@ function Modal({ open, onClose, children }) {
   )
 }
 
-function OSCard({ os, onAtualizado }) {
+function NovoFornecedorModal({ onSalvo }) {
   const [open, setOpen] = useState(false)
+  const [form, setForm] = useState({ nome: '', telefone: '' })
+
+  function fechar() {
+    setOpen(false)
+    setForm({ nome: '', telefone: '' })
+  }
+
+  async function handleSalvar() {
+    if (!form.nome.trim()) { alert('Nome é obrigatório'); return }
+    const { data, error } = await supabase
+      .from('fornecedores')
+      .insert([{ nome: form.nome.trim(), telefone: form.telefone.trim() || null }])
+      .select()
+      .single()
+    if (error) { alert('Erro: ' + error.message); return }
+    onSalvo(data)
+    fechar()
+  }
+
+  if (!open) return (
+    <button style={{ ...S.btnSecondary, padding: '8px 10px', fontSize: '12px', whiteSpace: 'nowrap' }} onClick={() => setOpen(true)}>
+      + Forn.
+    </button>
+  )
+
+  return (
+    <Modal open={true} onClose={fechar}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+        <h2 style={S.modalTitle}>Novo Fornecedor</h2>
+        <button onClick={fechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <div>
+          <Label>Nome</Label>
+          <Input value={form.nome} onChange={e => setForm(f => ({ ...f, nome: e.target.value }))} placeholder="Ex: Auto Center Silva" autoFocus />
+        </div>
+        <div>
+          <Label>Telefone</Label>
+          <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" />
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+          <button style={S.btnSecondary} onClick={fechar}>Cancelar</button>
+          <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function OSCard({ os, onAtualizado, autoOpen }) {
+  const [open, setOpen] = useState(false)
+  const autoOpenedRef = useRef(false)
   const [itens, setItens] = useState([])
   const [formaPagamento, setFormaPagamento] = useState('')
-  const [valorTotal, setValorTotal] = useState('')
   const [parcelas, setParcelas] = useState('')
   const [valorEntrada, setValorEntrada] = useState('')
   const [kmEntrada, setKmEntrada] = useState('')
@@ -231,11 +291,15 @@ function OSCard({ os, onAtualizado }) {
   const [itensEdit, setItensEdit] = useState([])
   const [kmEdit, setKmEdit] = useState('')
   const [obsEdit, setObsEdit] = useState('')
+  const [dataSolicitadaEdit, setDataSolicitadaEdit] = useState('')
+  const [fornecedoresDisponiveis, setFornecedoresDisponiveis] = useState([])
+  const [novoFornecedorId, setNovoFornecedorId] = useState('')
   const [servicosDisponiveis, setServicosDisponiveis] = useState([])
   const [novoServicoId, setNovoServicoId] = useState('')
   const [novoPreco, setNovoPreco] = useState('')
   const [novaQtd, setNovaQtd] = useState('1')
   const [buscaClienteEdit, setBuscaClienteEdit] = useState('')
+  const [todosClientesEdit, setTodosClientesEdit] = useState([])
   const [clienteEdit, setClienteEdit] = useState(null)
   const [clientesEdit, setClientesEdit] = useState([])
   const [veiculosEdit, setVeiculosEdit] = useState([])
@@ -252,14 +316,23 @@ function OSCard({ os, onAtualizado }) {
     }
   }, [open])
 
+  useEffect(() => {
+    if (autoOpen && !autoOpenedRef.current) {
+      autoOpenedRef.current = true
+      setOpen(true)
+    }
+  }, [autoOpen])
+
   async function fetchItens() {
     const { data } = await supabase
       .from('os_servicos')
-      .select('*, servicos(nome, tipo_servico)')
+      .select('*, servicos(nome, tipo_servico), fornecedores(id, nome)')
       .eq('os_id', os.id)
+      .eq('devolvido', false)
     setItens(data || [])
-    setValorTotal(os.valor_total || '')
   }
+
+  const valorTotal = itens.reduce((acc, i) => acc + (i.quantidade || 1) * parseFloat(i.preco_cobrado || 0), 0)
 
   async function entrarEdicao() {
     setItensEdit(itens.map(i => ({
@@ -269,9 +342,12 @@ function OSCard({ os, onAtualizado }) {
       tipo_servico: i.servicos?.tipo_servico || 'servico',
       quantidade: i.quantidade || 1,
       preco_cobrado: parseFloat(i.preco_cobrado),
+      fornecedor_id: i.fornecedor_id || null,
+      fornecedor_nome: i.fornecedores?.nome || null,
     })))
     setKmEdit(os.km_entrada?.toString() || '')
     setObsEdit(os.observacoes || '')
+    setDataSolicitadaEdit(os.data_solicitada ? toLocalInput(os.data_solicitada) : '')
     setBuscaClienteEdit(os.clientes?.nome_completo || '')
     setClienteEdit({ id: os.cliente_id, nome_completo: os.clientes?.nome_completo })
     setVeiculoIdEdit(os.veiculo_id || '')
@@ -285,22 +361,23 @@ function OSCard({ os, onAtualizado }) {
       const { data } = await supabase.from('servicos').select('*').eq('ativo', true).order('nome')
       setServicosDisponiveis(data || [])
     }
+    const { data: forns } = await supabase.from('fornecedores').select('id, nome').eq('ativo', true).order('nome')
+    setFornecedoresDisponiveis(forns || [])
+    const { data: clts } = await supabase.from('clientes').select('id, nome_completo').eq('ativo', true).order('nome_completo')
+    setTodosClientesEdit(clts || [])
     setEditando(true)
   }
 
-  async function buscarClientesEdit(q) {
+  function buscarClientesEdit(q) {
     setBuscaClienteEdit(q)
     setClienteEdit(null)
     setVeiculosEdit([])
     setVeiculoIdEdit('')
     if (q.length < 2) { setClientesEdit([]); return }
-    const { data } = await supabase
-      .from('clientes')
-      .select('id, nome_completo, telefone')
-      .ilike('nome_completo', `%${q}%`)
-      .eq('ativo', true)
-      .limit(8)
-    setClientesEdit(data || [])
+    const norm = q.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+    setClientesEdit(todosClientesEdit.filter(c =>
+      c.nome_completo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(norm)
+    ).slice(0, 8))
   }
 
   async function selecionarClienteEdit(c) {
@@ -320,17 +397,22 @@ function OSCard({ os, onAtualizado }) {
     if (!novoServicoId || !novoPreco) { alert('Selecione o serviço e informe o preço'); return }
     if (itensEdit.find(i => i.servico_id === novoServicoId)) { alert('Serviço já adicionado'); return }
     const svc = servicosDisponiveis.find(s => s.id === novoServicoId)
+    const tipo = svc.tipo_servico || 'servico'
+    const forn = tipo === 'peca' && novoFornecedorId ? fornecedoresDisponiveis.find(f => f.id === novoFornecedorId) : null
     setItensEdit(prev => [...prev, {
       id: null,
       servico_id: novoServicoId,
       nome: svc.nome,
-      tipo_servico: svc.tipo_servico || 'servico',
+      tipo_servico: tipo,
       quantidade: Math.max(1, parseInt(novaQtd) || 1),
-      preco_cobrado: parseFloat(novoPreco),
+      preco_cobrado: parseValor(novoPreco),
+      fornecedor_id: forn?.id || null,
+      fornecedor_nome: forn?.nome || null,
     }])
     setNovoServicoId('')
     setNovoPreco('')
     setNovaQtd('1')
+    setNovoFornecedorId('')
   }
 
   async function salvarEdicao() {
@@ -350,6 +432,7 @@ function OSCard({ os, onAtualizado }) {
         servico_id: i.servico_id,
         quantidade: i.quantidade,
         preco_cobrado: i.preco_cobrado,
+        fornecedor_id: i.fornecedor_id || null,
       })))
     }
     // atualiza OS
@@ -359,10 +442,10 @@ function OSCard({ os, onAtualizado }) {
       veiculo_id: veiculoIdEdit || os.veiculo_id,
       km_entrada: kmEdit ? parseInt(kmEdit) : null,
       observacoes: obsEdit || null,
+      data_solicitada: dataSolicitadaEdit ? new Date(dataSolicitadaEdit).toISOString() : null,
       valor_total: novoTotal,
     }).eq('id', os.id)
     await fetchItens()
-    setValorTotal(novoTotal)
     setEditando(false)
     setLoading(false)
     onAtualizado()
@@ -381,12 +464,12 @@ function OSCard({ os, onAtualizado }) {
     const extra = {}
     if (formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') {
       if (parcelas) extra.parcelas = parseInt(parcelas)
-      if (valorEntrada) extra.valor_entrada = parseFloat(valorEntrada)
+      if (valorEntrada) extra.valor_entrada = parseValor(valorEntrada)
     }
     const { error } = await supabase.from('ordens_servico').update({
       status: 'concluida',
       forma_pagamento: formaPagamento,
-      valor_total: parseFloat(valorTotal),
+      valor_total: valorTotal,
       pago_em: agora,
       concluida_em: new Date(dataConclusao + 'T12:00:00').toISOString(),
       ...extra
@@ -397,153 +480,68 @@ function OSCard({ os, onAtualizado }) {
   }
 
   async function handleConverter() {
-    if (!kmEntrada) { alert('Informe o KM de entrada'); return }
     setLoading(true)
     const agora = new Date().toISOString()
+    const km = kmEntrada ? parseInt(kmEntrada) : null
     const { error } = await supabase.from('ordens_servico').update({
       status: 'aberta',
-      km_entrada: parseInt(kmEntrada),
+      km_entrada: km,
       aberta_em: agora,
       orcamento_convertido_em: agora
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
-    await supabase.from('km_registros').insert([{
-      veiculo_id: os.veiculo_id,
-      os_id: os.id,
-      km: parseInt(kmEntrada),
-      origem: 'entrada_os'
-    }])
+    if (km) {
+      await supabase.from('km_registros').insert([{
+        veiculo_id: os.veiculo_id,
+        os_id: os.id,
+        km,
+        origem: 'entrada_os'
+      }])
+    }
     setOpen(false)
     onAtualizado()
   }
 
-  function imprimir() {
-    const win = window.open('', '_blank', 'width=820,height=700')
-    const fmt = (v) => parseFloat(v || 0).toFixed(2)
-    const dataBR = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—'
-    const labelPgto = { dinheiro: 'Dinheiro', pix: 'Pix', debito: 'Débito', credito: 'Crédito', parcelado: 'Parcelado', entrada_parcelado: 'Entrada + Parcelado' }
-    const grupos = [
-      { key: 'servico', label: 'Serviços' },
-      { key: 'peca', label: 'Peças' },
-      { key: 'terceirizado', label: 'Terceirizados' },
-    ]
-    const itensHtml = grupos.map(g => {
-      const gi = itens.filter(i => (i.servicos?.tipo_servico || 'servico') === g.key)
-      if (!gi.length) return ''
-      const rows = gi.map(i => `
-        <tr>
-          <td>${i.servicos?.nome || ''}</td>
-          <td style="text-align:center;width:40px">${(i.quantidade || 1) > 1 ? `${i.quantidade}×` : ''}</td>
-          <td style="text-align:right;width:100px">R$ ${fmt((i.quantidade || 1) * parseFloat(i.preco_cobrado))}</td>
-        </tr>`).join('')
-      return `<tr><td colspan="3" class="grupo-label">${g.label}</td></tr>${rows}`
-    }).join('')
-
-    const assinatura = (esq, dir) => `
-      <table class="assinatura-table">
-        <tr>
-          <td class="assinatura-cell">${esq}</td>
-          <td style="width:60px"></td>
-          <td class="assinatura-cell">${dir}</td>
-        </tr>
-      </table>`
-
-    win.document.write(`<!DOCTYPE html>
-<html lang="pt-BR"><head><meta charset="UTF-8">
-<title>Auto Almeida</title>
-<style>
-  @page { size: A4; margin: 15mm 15mm 15mm 15mm; }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: Arial, sans-serif; font-size: 13px; color: #111; }
-
-  /* aviso só na tela */
-  .aviso-impressao { background: #fffbe6; border: 1px solid #f0c040; border-radius: 6px; padding: 10px 14px; margin-bottom: 20px; font-size: 12px; color: #6b5000; }
-  @media print { .aviso-impressao { display: none; } }
-
-  .header-table { width: 100%; border-collapse: collapse; border-bottom: 2px solid #111; padding-bottom: 10px; margin-bottom: 16px; }
-  .header-table td { vertical-align: middle; padding-bottom: 10px; }
-  .empresa { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-  .empresa-sub { font-size: 11px; color: #555; margin-top: 2px; }
-  .tipo-badge { font-size: 13px; font-weight: 700; border: 2px solid #111; padding: 5px 14px; text-align: center; }
-
-  .secao { margin-bottom: 14px; }
-  .secao-titulo { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #555; margin-bottom: 6px; border-bottom: 1px solid #ccc; padding-bottom: 3px; }
-  .info-table { width: 100%; border-collapse: collapse; }
-  .info-table td { font-size: 12px; padding: 2px 0; width: 50%; }
-
-  table.servicos { width: 100%; border-collapse: collapse; margin-top: 6px; }
-  table.servicos th { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: #555; border-bottom: 1px solid #999; padding: 5px 4px; text-align: left; }
-  table.servicos td { padding: 6px 4px; border-bottom: 1px solid #ddd; vertical-align: top; }
-  .grupo-label { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: #666; background: #f0f0f0; padding: 4px 4px; border-bottom: none !important; }
-  .total-row td { font-weight: 700; font-size: 14px; border-top: 2px solid #111 !important; border-bottom: none !important; padding-top: 8px !important; }
-
-  .obs { font-size: 12px; color: #444; margin-top: 8px; }
-  .validade { font-size: 11px; color: #555; margin-top: 10px; }
-
-  .assinatura-table { width: 100%; border-collapse: collapse; margin-top: 56px; }
-  .assinatura-cell { border-top: 1px solid #555; padding-top: 6px; font-size: 11px; color: #555; text-align: center; }
-</style></head><body>
-
-<div class="aviso-impressao">
-  💡 Para melhor resultado: no diálogo de impressão, desmarque <b>"Cabeçalhos e rodapés"</b> (ou "Headers and footers").
-</div>
-
-<table class="header-table"><tr>
-  <td><div class="empresa">Auto Almeida</div><div class="empresa-sub">Oficina Mecânica</div></td>
-  <td style="text-align:right"><div class="tipo-badge">${isOrcamento ? 'ORÇAMENTO' : 'ORDEM DE SERVIÇO'}</div></td>
-</tr></table>
-
-<div class="secao">
-  <div class="secao-titulo">Cliente</div>
-  <table class="info-table"><tr>
-    <td><b>Nome:</b> ${os.clientes?.nome_completo || '—'}</td>
-    <td><b>Telefone:</b> ${os.clientes?.telefone || '—'}</td>
-  </tr></table>
-</div>
-
-<div class="secao">
-  <div class="secao-titulo">Veículo</div>
-  <table class="info-table">
-    <tr>
-      <td><b>Veículo:</b> ${os.veiculos?.modelos?.marcas?.nome || ''} ${os.veiculos?.modelos?.nome || ''}</td>
-      <td><b>Placa:</b> ${os.veiculos?.placa || '—'}</td>
-    </tr>
-    <tr>
-      <td><b>${isOrcamento ? 'Data:' : 'Entrada:'}</b> ${dataBR(os.aberta_em || os.created_at)}</td>
-      ${os.km_entrada ? `<td><b>KM:</b> ${os.km_entrada.toLocaleString('pt-BR')}</td>` : '<td></td>'}
-    </tr>
-  </table>
-</div>
-
-<div class="secao">
-  <div class="secao-titulo">Serviços</div>
-  <table class="servicos">
-    <thead><tr><th>Descrição</th><th style="text-align:center;width:40px">Qtd</th><th style="text-align:right;width:100px">Valor</th></tr></thead>
-    <tbody>
-      ${itensHtml}
-      <tr class="total-row">
-        <td>Total</td><td></td>
-        <td style="text-align:right">R$ ${fmt(os.valor_total)}</td>
-      </tr>
-    </tbody>
-  </table>
-</div>
-
-${os.observacoes ? `<p class="obs"><b>Observações:</b> ${os.observacoes}</p>` : ''}
-${os.forma_pagamento ? `<p class="obs" style="margin-top:6px"><b>Pagamento:</b> ${labelPgto[os.forma_pagamento] || os.forma_pagamento}</p>` : ''}
-
-${isOrcamento
-  ? `<p class="validade"><b>Válido até:</b> ${dataBR(os.validade_orcamento)}</p>${assinatura('Responsável — Auto Almeida', 'Aprovação do Cliente')}`
-  : assinatura('Responsável — Auto Almeida', 'Recebimento do Cliente')
-}
-
-<script>
-  window.onload = function() {
-    window.print()
-    window.onafterprint = function() { window.close() }
+  async function handleConcluirEImprimir() {
+    if (!formaPagamento) { alert('Informe a forma de pagamento'); return }
+    setLoading(true)
+    const agora = new Date().toISOString()
+    const extra = {}
+    if (formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') {
+      if (parcelas) extra.parcelas = parseInt(parcelas)
+      if (valorEntrada) extra.valor_entrada = parseValor(valorEntrada)
+    }
+    const { error } = await supabase.from('ordens_servico').update({
+      status: 'concluida',
+      forma_pagamento: formaPagamento,
+      valor_total: valorTotal,
+      pago_em: agora,
+      concluida_em: new Date(dataConclusao + 'T12:00:00').toISOString(),
+      ...extra
+    }).eq('id', os.id)
+    if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+    imprimir({ formaPagamento, valorTotal, parcelas: extra.parcelas, valorEntrada: extra.valor_entrada })
+    setOpen(false)
+    onAtualizado()
   }
-</script>
-</body></html>`)
+
+  function imprimir(override = {}) {
+    const win = window.open('', '_blank', 'width=820,height=700')
+    win.document.write(gerarHtmlOS({
+      isOrcamento,
+      cliente:          { nome: os.clientes?.nome_completo, telefone: os.clientes?.telefone },
+      veiculo:          { marca: os.veiculos?.modelos?.marcas?.nome, modelo: os.veiculos?.modelos?.nome, placa: os.veiculos?.placa },
+      data:             os.aberta_em || os.created_at,
+      dataSolicitada:   os.data_solicitada,
+      kmEntrada:        os.km_entrada,
+      itens,
+      total:            override.valorTotal    ?? os.valor_total,
+      formaPagamento:   override.formaPagamento ?? os.forma_pagamento,
+      parcelas:         override.parcelas       ?? os.parcelas,
+      valorEntrada:     override.valorEntrada   ?? os.valor_entrada,
+      observacoes:      os.observacoes,
+      validadeOrcamento: os.validade_orcamento,
+    }))
     win.document.close()
   }
 
@@ -583,7 +581,7 @@ ${isOrcamento
         )}
         {os.valor_total && (
           <div style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '16px', color: 'var(--success)', marginTop: '10px' }}>
-            R$ {parseFloat(os.valor_total).toFixed(2)}
+            R$ {formatValor(os.valor_total)}
           </div>
         )}
         {isOrcamento && os.validade_orcamento && (
@@ -603,10 +601,10 @@ ${isOrcamento
             {!editando && (
               <>
                 <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={imprimir}>
-                  🖨️ Imprimir
+                  Imprimir
                 </button>
                 <button style={{ ...S.btnSecondary, padding: '5px 12px', fontSize: '12px' }} onClick={entrarEdicao}>
-                  ✏️ Editar
+                  Editar
                 </button>
               </>
             )}
@@ -655,7 +653,7 @@ ${isOrcamento
               </div>
             )}
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <div>
                 <Label>KM de Entrada</Label>
                 <Input type="number" value={kmEdit} onChange={e => setKmEdit(e.target.value)} placeholder="Ex: 52000" />
@@ -665,6 +663,10 @@ ${isOrcamento
                 <Input value={obsEdit} onChange={e => setObsEdit(e.target.value)} placeholder="Opcional" />
               </div>
             </div>
+            <div style={{ marginBottom: '16px' }}>
+              <Label>Data solicitada pelo cliente</Label>
+              <Input type="datetime-local" value={dataSolicitadaEdit} onChange={e => setDataSolicitadaEdit(e.target.value)} />
+            </div>
 
             <hr style={S.divider} />
 
@@ -673,12 +675,15 @@ ${isOrcamento
               <tbody>
                 {itensEdit.map((item, idx) => (
                   <tr key={item.id || `new-${idx}`}>
-                    <td style={S.td}>{item.nome}</td>
+                    <td style={S.td}>
+                      {item.nome}
+                      {item.fornecedor_nome && <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: '11px' }}>Fornecedor: {item.fornecedor_nome}</span>}
+                    </td>
                     <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
                       {item.quantidade > 1 ? `${item.quantidade}×` : ''}
                     </td>
                     <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '90px' }}>
-                      R$ {(item.quantidade * item.preco_cobrado).toFixed(2)}
+                      R$ {formatValor(item.quantidade * item.preco_cobrado)}
                     </td>
                     <td style={{ ...S.td, width: '30px', borderBottom: '1px solid var(--border)' }}>
                       <button
@@ -695,7 +700,7 @@ ${isOrcamento
               <select
                 style={{ ...S.select, flex: 1 }}
                 value={novoServicoId}
-                onChange={e => setNovoServicoId(e.target.value)}
+                onChange={e => { setNovoServicoId(e.target.value); setNovoFornecedorId('') }}
               >
                 <option value="">+ Serviço</option>
                 {['servico', 'peca', 'terceirizado'].map(tipo => {
@@ -706,13 +711,29 @@ ${isOrcamento
                 })}
               </select>
               <Input type="number" value={novaQtd} onChange={e => setNovaQtd(e.target.value)} placeholder="Qtd" min="1" style={{ width: '60px' }} />
-              <Input type="number" value={novoPreco} onChange={e => setNovoPreco(e.target.value)} placeholder="R$" style={{ width: '90px' }} />
+              <Input type="text" inputMode="decimal" value={novoPreco} onChange={e => setNovoPreco(e.target.value)} onBlur={e => setNovoPreco(formatValor(e.target.value))} placeholder="R$" style={{ width: '90px' }} />
               <button style={S.btnPrimary} onClick={adicionarItemEdit}>+</button>
             </div>
+            {servicosDisponiveis.find(s => s.id === novoServicoId)?.tipo_servico === 'peca' && (
+              <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>
+                <select
+                  style={{ ...S.select, flex: 1 }}
+                  value={novoFornecedorId}
+                  onChange={e => setNovoFornecedorId(e.target.value)}
+                >
+                  <option value="">Fornecedor (opcional)</option>
+                  {fornecedoresDisponiveis.map(f => <option key={f.id} value={f.id}>{f.nome}</option>)}
+                </select>
+                <NovoFornecedorModal onSalvo={f => {
+                  setFornecedoresDisponiveis(prev => [...prev, f].sort((a, b) => a.nome.localeCompare(b.nome)))
+                  setNovoFornecedorId(f.id)
+                }} />
+              </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
               <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--success)' }}>
-                R$ {itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0).toFixed(2)}
+                R$ {formatValor(itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0))}
               </span>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button style={S.btnSecondary} onClick={() => setEditando(false)}>Cancelar</button>
@@ -730,6 +751,11 @@ ${isOrcamento
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, letterSpacing: '0.05em' }}>{os.veiculos?.placa}</span>
         </div>
         {os.km_entrada && <div style={S.infoRow}><span><b>KM:</b> {os.km_entrada.toLocaleString()}</span></div>}
+        {os.data_solicitada && (
+          <div style={S.infoRow}>
+            <span><b>Solicitada para:</b> {new Date(os.data_solicitada).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+          </div>
+        )}
         {!isOrcamento && (
           <div style={{ ...S.infoRow, alignItems: 'center', gap: '8px' }}>
             <span style={{ whiteSpace: 'nowrap' }}><b>Entrada:</b></span>
@@ -753,42 +779,78 @@ ${isOrcamento
           const grupoItens = itens.filter(i => (i.servicos?.tipo_servico || 'servico') === grupo.value)
           if (grupoItens.length === 0) return null
           const subtotal = grupoItens.reduce((acc, i) => acc + (i.quantidade || 1) * parseFloat(i.preco_cobrado), 0)
+
+          // Para peças: agrupar por fornecedor (incluindo "Sem fornecedor")
+          let subgrupos
+          if (grupo.value === 'peca') {
+            const mapa = new Map()
+            grupoItens.forEach(i => {
+              const key = i.fornecedor_id || '__none__'
+              const nome = i.fornecedores?.nome || 'Sem fornecedor'
+              if (!mapa.has(key)) mapa.set(key, { nome, itens: [] })
+              mapa.get(key).itens.push(i)
+            })
+            // Sem fornecedor por último
+            subgrupos = [...mapa.entries()]
+              .sort(([a], [b]) => a === '__none__' ? 1 : b === '__none__' ? -1 : 0)
+              .map(([, v]) => v)
+          } else {
+            subgrupos = [{ nome: null, itens: grupoItens }]
+          }
+
           return (
             <div key={grupo.value} style={{ marginBottom: '16px' }}>
               <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '11px', color: 'var(--text-faint)', marginBottom: '6px', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
                 {grupo.label}
               </p>
-              <table style={S.table}>
-                <tbody>
-                  {grupoItens.map(i => (
-                    <tr key={i.id}>
-                      <td style={S.td}>{i.servicos?.nome}</td>
-                      <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
-                        {(i.quantidade || 1) > 1 ? `${i.quantidade}×` : ''}
-                      </td>
-                      <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '100px' }}>
-                        R$ {((i.quantidade || 1) * parseFloat(i.preco_cobrado)).toFixed(2)}
-                      </td>
-                    </tr>
-                  ))}
-                  {grupoItens.length > 1 && (
-                    <tr>
-                      <td style={{ ...S.td, fontSize: '11px', color: 'var(--text-faint)', borderBottom: 'none' }}>Subtotal</td>
-                      <td style={{ borderBottom: 'none' }}></td>
-                      <td style={{ ...S.td, textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: 'none' }}>
-                        R$ {subtotal.toFixed(2)}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              {subgrupos.map((sub, sidx) => {
+                const subSubtotal = sub.itens.reduce((acc, i) => acc + (i.quantidade || 1) * parseFloat(i.preco_cobrado), 0)
+                return (
+                  <div key={sidx} style={{ marginBottom: subgrupos.length > 1 ? '10px' : 0 }}>
+                    {sub.nome && (
+                      <p style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 500, fontSize: '11px', color: 'var(--text-muted)', marginBottom: '2px', marginTop: sidx > 0 ? '8px' : 0 }}>
+                        {sub.nome}
+                      </p>
+                    )}
+                    <table style={S.table}>
+                      <tbody>
+                        {sub.itens.map(i => (
+                          <tr key={i.id}>
+                            <td style={S.td}>{i.servicos?.nome}</td>
+                            <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
+                              {(i.quantidade || 1) > 1 ? `${i.quantidade}×` : ''}
+                            </td>
+                            <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '100px' }}>
+                              R$ {formatValor((i.quantidade || 1) * parseFloat(i.preco_cobrado))}
+                            </td>
+                          </tr>
+                        ))}
+                        {grupo.value === 'peca' && sub.itens.length > 1 && subgrupos.length > 1 && (
+                          <tr>
+                            <td style={{ ...S.td, fontSize: '11px', color: 'var(--text-faint)', borderBottom: 'none' }}>Subtotal</td>
+                            <td style={{ borderBottom: 'none' }}></td>
+                            <td style={{ ...S.td, textAlign: 'right', fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600, borderBottom: 'none' }}>
+                              R$ {formatValor(subSubtotal)}
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )
+              })}
+              {grupoItens.length > 1 && (
+                <p style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '12px', color: 'var(--text-muted)', textAlign: 'right', marginTop: '4px' }}>
+                  Total {grupo.label.toLowerCase()}: <b>R$ {formatValor(subtotal)}</b>
+                </p>
+              )}
             </div>
           )
         })}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--text)' }}>Total</span>
           <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '18px', color: 'var(--success)' }}>
-            R$ {parseFloat(os.valor_total || 0).toFixed(2)}
+            R$ {formatValor(os.valor_total || 0)}
           </span>
         </div>
 
@@ -824,9 +886,11 @@ ${isOrcamento
                   <option value="entrada_parcelado">Entrada + Parcelado</option>
                 </select>
               </div>
-              <div>
-                <Label>Valor Total (R$)</Label>
-                <Input type="number" value={valorTotal} onChange={e => setValorTotal(e.target.value)} />
+              <div style={{ textAlign: 'right' }}>
+                <Label>Valor Total</Label>
+                <div style={{ padding: '9px 0', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '18px', color: 'var(--success)' }}>
+                  R$ {formatValor(valorTotal)}
+                </div>
               </div>
               <div>
                 <Label>Data de Conclusão</Label>
@@ -838,7 +902,7 @@ ${isOrcamento
                 {formaPagamento === 'entrada_parcelado' && (
                   <div>
                     <Label>Valor de Entrada (R$)</Label>
-                    <Input type="number" value={valorEntrada} onChange={e => setValorEntrada(e.target.value)} placeholder="0,00" />
+                    <Input type="text" inputMode="decimal" value={valorEntrada} onChange={e => setValorEntrada(e.target.value)} onBlur={e => setValorEntrada(formatValor(e.target.value))} placeholder="0,00" />
                   </div>
                 )}
                 <div>
@@ -847,9 +911,14 @@ ${isOrcamento
                 </div>
               </div>
             )}
-            <button style={{ ...S.btnPrimary, width: '100%', padding: '11px' }} onClick={handleConcluir} disabled={loading}>
-              Concluir OS
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button style={{ ...S.btnPrimary, flex: 1, padding: '11px' }} onClick={handleConcluir} disabled={loading}>
+                Concluir OS
+              </button>
+              <button style={{ ...S.btnSecondary, flex: 1, padding: '11px' }} onClick={handleConcluirEImprimir} disabled={loading}>
+                Salvar e Imprimir
+              </button>
+            </div>
           </div>
         )}
 
@@ -865,10 +934,20 @@ ${isOrcamento
 
 export default function OrdemServico() {
   const navigate = useNavigate()
-  const [aba, setAba] = useState('abertas')
+  const location = useLocation()
+  const abrirOsId = location.state?.abrirOsId
+  const abrirStatus = location.state?.abrirStatus
+  const [aba, setAba] = useState(() => abrirStatus === 'orcamento' ? 'orcamentos' : 'abertas')
   const [os, setOs] = useState([])
 
   useEffect(() => { fetchOS() }, [aba])
+
+  useEffect(() => {
+    if (abrirOsId) {
+      navigate(location.pathname, { replace: true, state: null })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function fetchOS() {
     const status = aba === 'abertas' ? 'aberta' : 'orcamento'
@@ -912,7 +991,7 @@ export default function OrdemServico() {
         </p>
       ) : (
         <div style={S.grid}>
-          {os.map(o => <OSCard key={o.id} os={o} onAtualizado={fetchOS} />)}
+          {os.map(o => <OSCard key={o.id} os={o} onAtualizado={fetchOS} autoOpen={o.id === abrirOsId} />)}
         </div>
       )}
     </div>
