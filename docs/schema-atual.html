@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Schema atual — oficina-web</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1115; --card: #181b22; --card2: #1e222b; --border: #2a2f3a;
+    --txt: #e6e8ec; --muted: #9aa3b2; --accent: #5b9dff; --accent2: #ffb454;
+    --green: #3fb950; --red: #f85149; --pill: #262b35;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--txt);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 40px 24px 80px; }
+  header h1 { font-size: 30px; margin: 0 0 6px; }
+  header p { color: var(--muted); margin: 0; }
+  .badge { display: inline-block; background: var(--pill); border: 1px solid var(--border);
+    border-radius: 20px; padding: 2px 12px; font-size: 12px; color: var(--muted); margin-top: 12px; }
+  h2 { font-size: 21px; margin: 48px 0 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  h3 { font-size: 16px; margin: 0 0 8px; }
+  a { color: var(--accent); }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px 22px; background: var(--card);
+    border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-top: 20px; }
+  .legend span { font-size: 14px; color: var(--muted); }
+  .legend b { color: var(--txt); }
+
+  .diagram { background: #fff; border-radius: 12px; padding: 20px; overflow-x: auto; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+  th { color: var(--muted); font-weight: 600; font-size: 13px; text-transform: uppercase; letter-spacing: .04em; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .bar { height: 8px; background: var(--accent); border-radius: 4px; display: inline-block; vertical-align: middle; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; margin-top: 16px; }
+  .tcard { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+  .tcard.unused { opacity: .72; border-style: dashed; }
+  .tcard h3 { display: flex; justify-content: space-between; align-items: baseline; }
+  .tcard h3 .cnt { font-size: 12px; color: var(--muted); font-weight: 400; }
+  .cols { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13.5px; }
+  .cols li { padding: 3px 0; border-top: 1px dashed var(--border); display: flex; gap: 8px; align-items: baseline; }
+  .cols li:first-child { border-top: 0; }
+  .k { font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; letter-spacing: .03em; }
+  .k.pk { background: #3a2d10; color: var(--accent2); }
+  .k.fk { background: #102a3a; color: var(--accent); }
+  .cname { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  .warn { color: var(--accent2); font-size: 12px; }
+  .sleep { color: var(--muted); }
+
+  .foco { background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--accent);
+    border-radius: 10px; padding: 16px 20px; margin-top: 16px; }
+  .foco.f2 { border-left-color: var(--accent2); }
+  .foco.f3 { border-left-color: var(--green); }
+  .foco.f4 { border-left-color: var(--red); }
+  .foco h3 { font-size: 16px; }
+  .foco code { background: var(--pill); padding: 1px 6px; border-radius: 5px; font-size: 13px; }
+  .foco .why { color: var(--muted); margin: 6px 0 0; }
+
+  .alert { background: #2a1416; border: 1px solid #5a2327; border-radius: 10px; padding: 16px 20px; margin-top: 20px; }
+  .alert b { color: var(--red); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Schema atual — oficina-web</h1>
+    <p>Snapshot do banco <b>de produção</b> (Supabase <code>vjtgrxflathoftctarxi</code>), capturado via <code>supabase gen types</code> + contagens REST.</p>
+    <span class="badge">📅 2026-06-17 · 11 tabelas · banco compartilhado com o site antigo</span>
+  </header>
+
+  <div class="legend">
+    <span><b>🔑 PK</b> chave primária</span>
+    <span><b>🔗 FK</b> chave estrangeira</span>
+    <span><b style="color:var(--green)">✅</b> usado pelo front novo</span>
+    <span><b style="color:var(--muted)">💤</b> existe no banco, front não usa</span>
+    <span><b style="color:var(--accent2)">⚠ str</b> campo livre (sem enum/CHECK)</span>
+  </div>
+
+  <h2>1 · Diagrama de relacionamentos</h2>
+  <div class="diagram">
+    <pre class="mermaid">
+erDiagram
+    clientes ||--o{ veiculos : "possui"
+    clientes ||--o{ ordens_servico : "abre"
+    clientes ||--o{ agendamentos : "agenda"
+    marcas   ||--o{ modelos : "tem"
+    modelos  ||--o{ veiculos : "classifica"
+    veiculos ||--o{ ordens_servico : "recebe"
+    veiculos ||--o{ km_registros : "registra"
+    ordens_servico ||--o{ os_servicos : "contém"
+    ordens_servico ||--o{ km_registros : "gera"
+    ordens_servico ||--o{ agendamentos : "vincula"
+    servicos     ||--o{ os_servicos : "compõe"
+    fornecedores ||--o{ os_servicos : "fornece"
+
+    clientes {
+      uuid id PK
+      text nome_completo
+      text tipo_pessoa "⚠ sem enum (PF/PJ)"
+      text cpf_cnpj
+      text telefone
+      text email
+      text endereco "7 campos"
+      bool ativo
+    }
+    veiculos {
+      uuid id PK
+      uuid cliente_id FK
+      uuid modelo_id FK
+      text placa
+      int  ano_fabricacao
+      int  ano_modelo
+      text chassi
+    }
+    marcas {
+      uuid id PK
+      text nome
+      text codigo_fipe
+    }
+    modelos {
+      uuid id PK
+      uuid marca_id FK
+      text nome
+    }
+    servicos {
+      uuid id PK
+      text nome
+      text categoria
+      text tipo_servico "💤 hint de tipo"
+    }
+    ordens_servico {
+      uuid id PK
+      int  numero_os "💤"
+      uuid cliente_id FK
+      uuid veiculo_id FK
+      text status "⚠ sem enum"
+      numeric valor_total
+      text forma_pagamento "⚠ embutido"
+      numeric valor_entrada "💤 pagamento"
+      int  parcelas "💤 pagamento"
+      int  km_entrada
+      date previsao_entrega "💤"
+    }
+    os_servicos {
+      uuid id PK
+      uuid os_id FK
+      uuid servico_id FK
+      uuid fornecedor_id FK "💤 peça"
+      numeric preco_cobrado
+      int  quantidade "💤 peça"
+      bool devolvido "💤 peça"
+    }
+    fornecedores {
+      uuid id PK
+      text nome
+      text telefone
+    }
+    km_registros {
+      uuid id PK
+      uuid veiculo_id FK
+      uuid os_id FK
+      int  km
+      text origem
+    }
+    agendamentos {
+      uuid id PK
+      uuid cliente_id FK
+      uuid os_id FK
+      text titulo
+      timestamptz data_inicio
+      timestamptz data_fim
+    }
+    configuracoes {
+      uuid id PK
+      text chave
+      text valor
+    }
+    </pre>
+  </div>
+
+  <h2>2 · Volume de dados</h2>
+  <table>
+    <thead><tr><th>Tabela</th><th class="num">Registros</th><th>Proporção</th><th>Front</th></tr></thead>
+    <tbody id="counts"></tbody>
+  </table>
+
+  <h2>3 · Tabelas em detalhe</h2>
+  <div class="grid" id="tables"></div>
+
+  <h2>4 · Pontos para o redesenho</h2>
+
+  <div class="foco f3">
+    <h3>① Integridade / enums</h3>
+    <p><code>status</code>, <code>tipo_pessoa</code> e <code>forma_pagamento</code> são <b>texto livre</b> — sem enum nem CHECK. Dá pra gravar <code>"abertaa"</code> e ninguém reclama. <code>numero_os</code> existe mas (aparentemente) sem unicidade garantida.</p>
+    <p class="why">→ Virar enums Postgres ou CHECK, FKs com <code>ON DELETE</code> explícito, índices nas FKs e em <code>placa</code>/<code>cpf_cnpj</code>, e sequência única para <code>numero_os</code>.</p>
+  </div>
+
+  <div class="foco f2">
+    <h3>② Peças × mão de obra</h3>
+    <p><code>os_servicos</code> faz <b>dois papéis ao mesmo tempo</b>: item de serviço (<code>servico_id</code>) e item de peça (<code>quantidade</code>, <code>fornecedor_id</code>, <code>devolvido</code>). Não existe tabela de peças/produtos nem estoque.</p>
+    <p class="why">→ Separar catálogo de <b>peças/produtos</b> de <b>serviços</b>, e os itens da OS por tipo (mão de obra vs peça), abrindo espaço pra estoque e custo.</p>
+  </div>
+
+  <div class="foco">
+    <h3>③ Pagamentos</h3>
+    <p>Hoje o pagamento mora <b>dentro da OS</b> (<code>forma_pagamento</code>, <code>parcelas</code>, <code>valor_entrada</code>, <code>pago_em</code>). Uma OS comporta só um pagamento — não dá pra registrar duas formas nem parcelas reais com vencimento.</p>
+    <p class="why">→ Tabela <code>pagamentos</code> (N por OS) com valor, forma, data e status; <code>parcelas</code> com vencimento se precisar de crediário.</p>
+  </div>
+
+  <div class="foco f4">
+    <h3>④ Multiusuário / oficina &nbsp;<span style="font-size:12px;color:var(--red)">(+ segurança)</span></h3>
+    <p>Nenhuma tabela tem <code>oficina_id</code>/<code>user_id</code>. E o <b>RLS está aberto</b>: a chave anon (que vai no bundle do site) consegue ler <b>todos os clientes com CPF/CNPJ e telefone</b>.</p>
+    <p class="why">→ Introduzir dono (oficina/usuário) e políticas RLS por dono. Mesmo sem multi-tenant agora, fechar o RLS é urgente.</p>
+  </div>
+
+  <div class="alert">
+    <b>⚠ Banco compartilhado com o site antigo.</b> O redesenho será feito como <b>migrations in-place retrocompatíveis</b>, preservando os 188 registros de OS e demais dados — nada de recriar do zero.
+  </div>
+</div>
+
+<script>
+  const data = {
+    clientes: { n: 133, used: true, cols: [
+      ["id","pk"], ["nome_completo"], ["tipo_pessoa","","⚠ PF/PJ sem enum"], ["cpf_cnpj"],
+      ["telefone"], ["email"], ["cep · logradouro · numero · complemento · bairro · cidade · uf"],
+      ["observacoes","","💤"], ["ativo"], ["created_at · updated_at"] ] },
+    veiculos: { n: 155, used: true, cols: [
+      ["id","pk"], ["cliente_id","fk"], ["modelo_id","fk"], ["placa"], ["chassi"],
+      ["ano_fabricacao · ano_modelo"], ["cor"], ["observacoes"], ["ativo"], ["timestamps"] ] },
+    marcas: { n: 107, used: true, cols: [ ["id","pk"], ["nome"], ["codigo_fipe"], ["ativo"] ] },
+    modelos: { n: 3900, used: true, cols: [ ["id","pk"], ["marca_id","fk"], ["nome"], ["ativo"] ] },
+    servicos: { n: 338, used: true, cols: [
+      ["id","pk"], ["nome"], ["categoria"], ["tipo_servico","","💤 hint de tipo"],
+      ["descricao"], ["ativo"], ["timestamps"] ] },
+    ordens_servico: { n: 188, used: true, cols: [
+      ["id","pk"], ["numero_os","","💤"], ["cliente_id","fk"], ["veiculo_id","fk"],
+      ["status","","⚠ sem enum"], ["valor_total"], ["forma_pagamento","","⚠ embutido"],
+      ["valor_entrada · parcelas","","💤 pagamento"], ["km_entrada"],
+      ["data_solicitada · previsao_entrega","","💤"],
+      ["aberta_em · concluida_em · pago_em · validade_orcamento · orcamento_convertido_em"], ["timestamps"] ] },
+    os_servicos: { n: 1083, used: true, cols: [
+      ["id","pk"], ["os_id","fk"], ["servico_id","fk"], ["fornecedor_id","fk","💤 peça"],
+      ["preco_cobrado"], ["quantidade","","💤 peça"], ["devolvido · devolvido_em","","💤 peça"], ["observacoes"] ] },
+    km_registros: { n: 82, used: true, cols: [
+      ["id","pk"], ["veiculo_id","fk"], ["os_id","fk"], ["km"], ["origem"], ["registrado_em"] ] },
+    agendamentos: { n: 66, used: false, cols: [
+      ["id","pk"], ["cliente_id","fk"], ["os_id","fk"], ["titulo"], ["tipo · cor"],
+      ["descricao"], ["data_inicio · data_fim"], ["created_at"] ] },
+    fornecedores: { n: 4, used: false, cols: [ ["id","pk"], ["nome"], ["telefone"], ["ativo"], ["timestamps"] ] },
+    configuracoes: { n: 1, used: true, cols: [ ["id","pk"], ["chave"], ["valor"], ["descricao"] ] },
+  };
+
+  const max = Math.max(...Object.values(data).map(d => d.n));
+  const sorted = Object.entries(data).sort((a, b) => b[1].n - a[1].n);
+
+  document.getElementById("counts").innerHTML = sorted.map(([name, d]) => `
+    <tr>
+      <td><span class="cname">${name}</span></td>
+      <td class="num">${d.n.toLocaleString("pt-BR")}</td>
+      <td><span class="bar" style="width:${Math.max(4, d.n / max * 280)}px"></span></td>
+      <td>${d.used ? "✅" : "💤"}</td>
+    </tr>`).join("");
+
+  document.getElementById("tables").innerHTML = Object.entries(data).map(([name, d]) => `
+    <div class="tcard ${d.used ? "" : "unused"}">
+      <h3><span class="cname">${name}</span> <span class="cnt">${d.n.toLocaleString("pt-BR")} reg · ${d.used ? "✅ em uso" : "💤 não usada"}</span></h3>
+      <ul class="cols">
+        ${d.cols.map(([c, k, note]) => `
+          <li>
+            ${k === "pk" ? '<span class="k pk">PK</span>' : k === "fk" ? '<span class="k fk">FK</span>' : ''}
+            <span class="cname">${c}</span>
+            ${note ? `<span class="${note.includes("⚠") ? "warn" : "sleep"}" style="margin-left:auto">${note}</span>` : ""}
+          </li>`).join("")}
+      </ul>
+    </div>`).join("");
+
+  mermaid.initialize({ startOnLoad: true, theme: "default", er: { useMaxWidth: true } });
+</script>
+</body>
+</html>
