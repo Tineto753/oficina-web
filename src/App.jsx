@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, NavLink, useLocation } from 'react-router
 import { useState, useEffect } from 'react'
 import Clientes from './pages/Clientes'
 import Servicos from './pages/Servicos'
+import Estoque from './pages/Estoque'
 import OrdemServico from './pages/OrdemServico'
 import NovaOS from './pages/NovaOS'
 import Historico from './pages/Historico'
@@ -23,6 +24,7 @@ function Navbar() {
   const links = [
     { to: '/', label: 'Clientes', exact: true },
     { to: '/servicos', label: 'Serviços' },
+    { to: '/estoque', label: 'Estoque' },
     { to: '/fornecedores', label: 'Fornecedores' },
     { to: '/os', label: 'OS' },
     { to: '/historico', label: 'Histórico' },
@@ -137,6 +139,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Clientes />} />
             <Route path="/servicos" element={<Servicos />} />
+            <Route path="/estoque" element={<Estoque />} />
             <Route path="/fornecedores" element={<Fornecedores />} />
             <Route path="/os/nova" element={<NovaOS />} />
             <Route path="/os" element={<OrdemServico />} />

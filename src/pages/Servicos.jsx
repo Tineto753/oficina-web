@@ -246,6 +246,11 @@ export default function Servicos() {
   const [form, setForm] = useState({ nome: '', descricao: '', tipo_servico: 'servico' })
   const [editando, setEditando] = useState(null)
   const [nomeErro, setNomeErro] = useState('')
+  // estoque (só peças)
+  const [controlaEstoque, setControlaEstoque] = useState(false)
+  const [custo, setCusto] = useState('')
+  const [estoqueMin, setEstoqueMin] = useState('')
+  const [ajuste, setAjuste] = useState('')
 
   useEffect(() => { fetchServicos() }, [])
 
@@ -267,6 +272,10 @@ export default function Servicos() {
   function abrirEdicao(s) {
     setEditando(s)
     setForm({ nome: s.nome, descricao: s.descricao || '', tipo_servico: s.tipo_servico || 'servico' })
+    setControlaEstoque(!!s.controla_estoque)
+    setCusto(s.custo ?? '')
+    setEstoqueMin(s.estoque_minimo ?? '')
+    setAjuste('')
     setNomeErro('')
     setOpen(true)
   }
@@ -276,7 +285,11 @@ export default function Servicos() {
       if (!form.nome) { alert('Nome é obrigatório'); return }
       if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
       const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ0-9 ]/g, '')
-      const { error } = await supabase.from('servicos').update({ nome: nomeNormalizado, descricao: form.descricao, tipo_servico: form.tipo_servico }).eq('id', editando.id)
+      const update = estoqueFields({ nome: nomeNormalizado, descricao: form.descricao, tipo_servico: form.tipo_servico })
+      if (form.tipo_servico === 'peca' && ajuste !== '' && !isNaN(parseFloat(ajuste))) {
+        update.estoque = (Number(editando.estoque) || 0) + parseFloat(ajuste)
+      }
+      const { error } = await supabase.from('servicos').update(update).eq('id', editando.id)
       if (error) { alert('Erro: ' + error.message); return }
       fecharModal()
       fetchServicos()
@@ -293,7 +306,7 @@ export default function Servicos() {
       .eq('ativo', true)
       .maybeSingle()
     if (existente) { alert('Já existe um serviço com este nome.'); return }
-    const { error } = await supabase.from('servicos').insert([{ ...form, nome: nomeNormalizado }])
+    const { error } = await supabase.from('servicos').insert([estoqueFields({ ...form, nome: nomeNormalizado })])
     if (error) { alert('Erro: ' + error.message); return }
     fecharModal()
     fetchServicos()
@@ -316,6 +329,24 @@ export default function Servicos() {
     setEditando(null)
     setNomeErro('')
     setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
+    setControlaEstoque(false)
+    setCusto('')
+    setEstoqueMin('')
+    setAjuste('')
+  }
+
+  function estoqueFields(base) {
+    if (form.tipo_servico !== 'peca') return base
+    return {
+      ...base,
+      controla_estoque: controlaEstoque,
+      custo: custo === '' ? null : parseFloat(custo),
+      estoque_minimo: estoqueMin === '' ? 0 : parseFloat(estoqueMin),
+    }
+  }
+
+  function estoqueBaixo(s) {
+    return s.controla_estoque && (Number(s.estoque) || 0) <= (Number(s.estoque_minimo) || 0)
   }
 
   return (
@@ -349,6 +380,7 @@ export default function Servicos() {
             <tr>
               <th style={S.th}>Nome</th>
               <th style={S.th}>Tipo</th>
+              <th style={S.th}>Estoque</th>
               <th style={S.th}>Descrição</th>
               <th style={S.th}></th>
             </tr>
@@ -367,6 +399,17 @@ export default function Servicos() {
                     {TIPOS.find(t => t.value === s.tipo_servico)?.label || 'Serviço'}
                   </span>
                 </td>
+                <td style={S.td}>
+                  {s.tipo_servico !== 'peca' ? (
+                    <span style={{ color: 'var(--text-faint)' }}>—</span>
+                  ) : s.controla_estoque ? (
+                    <span style={{ fontWeight: 600, color: estoqueBaixo(s) ? 'var(--danger)' : 'var(--text)' }}>
+                      {Number(s.estoque) || 0}{estoqueBaixo(s) ? ' ⚠' : ''}
+                    </span>
+                  ) : (
+                    <span style={{ color: 'var(--text-faint)' }}>—</span>
+                  )}
+                </td>
                 <td style={{ ...S.td, color: 'var(--text-muted)' }}>{s.descricao || '—'}</td>
                 <td style={{ ...S.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
                   <button style={{ ...S.btnSecondary, fontSize: '12px', padding: '4px 10px', marginRight: '6px' }} onClick={() => abrirEdicao(s)}>Editar</button>
@@ -375,7 +418,7 @@ export default function Servicos() {
               </tr>
             ))}
             {servicosFiltrados.length === 0 && (
-              <tr><td colSpan={4} style={S.emptyState}>Nenhum serviço encontrado</td></tr>
+              <tr><td colSpan={5} style={S.emptyState}>Nenhum serviço encontrado</td></tr>
             )}
           </tbody>
         </table>
@@ -411,6 +454,37 @@ export default function Servicos() {
               placeholder="Detalhes opcionais"
             />
           </div>
+          {form.tipo_servico === 'peca' && (
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text)', fontFamily: 'DM Sans, sans-serif', cursor: 'pointer' }}>
+                <input type="checkbox" checked={controlaEstoque} onChange={e => setControlaEstoque(e.target.checked)} />
+                Controlar estoque desta peça
+              </label>
+              {controlaEstoque && (
+                <>
+                  {editando && (
+                    <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                      Saldo atual: <b style={{ color: 'var(--text)' }}>{Number(editando.estoque) || 0}</b>
+                    </div>
+                  )}
+                  {editando && (
+                    <div>
+                      <Label>Ajuste de saldo (+ entrada / − saída)</Label>
+                      <Input type="number" value={ajuste} onChange={e => setAjuste(e.target.value)} placeholder="Ex: 10 ou -2" />
+                    </div>
+                  )}
+                  <div>
+                    <Label>Custo (R$)</Label>
+                    <Input type="number" value={custo} onChange={e => setCusto(e.target.value)} placeholder="0" />
+                  </div>
+                  <div>
+                    <Label>Estoque mínimo (alerta)</Label>
+                    <Input type="number" value={estoqueMin} onChange={e => setEstoqueMin(e.target.value)} placeholder="0" />
+                  </div>
+                </>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px' }}>
             <button style={S.btnSecondary} onClick={fecharModal}>Cancelar</button>
             <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>

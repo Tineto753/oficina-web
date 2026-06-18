@@ -475,8 +475,23 @@ function OSCard({ os, onAtualizado, autoOpen }) {
       ...extra
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+    await baixarEstoque()
     setOpen(false)
     onAtualizado()
+  }
+
+  // Baixa de estoque: peças cujo fornecedor é "Auto Almeida" (eh_estoque) saíram do estoque.
+  async function baixarEstoque() {
+    const { data: linhas } = await supabase
+      .from('os_servicos')
+      .select('quantidade, servico_id, devolvido, fornecedores(eh_estoque), servicos(estoque)')
+      .eq('os_id', os.id)
+    for (const l of linhas || []) {
+      if (l.fornecedores?.eh_estoque && !l.devolvido) {
+        const novo = (Number(l.servicos?.estoque) || 0) - (Number(l.quantidade) || 1)
+        await supabase.from('servicos').update({ estoque: novo }).eq('id', l.servico_id)
+      }
+    }
   }
 
   async function handleConverter() {
@@ -520,6 +535,7 @@ function OSCard({ os, onAtualizado, autoOpen }) {
       ...extra
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
+    await baixarEstoque()
     imprimir({ formaPagamento, valorTotal, parcelas: extra.parcelas, valorEntrada: extra.valor_entrada })
     setOpen(false)
     onAtualizado()
