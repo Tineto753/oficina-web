@@ -4,6 +4,18 @@ Funcionalidades já implementadas (✅) e planejadas (🔲).
 
 ---
 
+## ✅ Controle de Estoque (junho/2026)
+- Nova aba **Estoque** (`/estoque`): saldos das peças controladas, resumo (peças controladas, abaixo do mínimo, valor total em estoque) e movimentação (entrada/saída + custo/mínimo)
+- Peças (`servicos`) ganharam `controla_estoque`, `estoque` (saldo), `custo` e `estoque_minimo`; gerenciáveis também na edição da peça em Serviços, com alerta visual de estoque baixo
+- Fornecedor especial **"Auto Almeida"** (`fornecedores.eh_estoque`) = estoque interno: escolher ele numa peça da OS sinaliza que saiu do estoque
+- **Baixa automática** na conclusão da OS para peças com fornecedor "Auto Almeida" (ignora itens devolvidos)
+- Migration: `migrations/001_estoque.sql`
+
+## 🔲 Financeiro (planejado)
+- Pagamentos/parcelas próprios, contas a pagar (compras × despesas), fluxo de caixa + dashboard, imposto estimado (Simples) e emissão fiscal NF-e/NFS-e. Design completo em [`docs/adr/`](./docs/adr/).
+
+---
+
 ## ✅ Correções de Busca e Fuso Horário (maio/2026)
 - Busca de cliente sem acento e case-insensitive em todas as páginas (Clientes, NovaOS, Histórico, OrdemServico, Agenda)
 - Busca por CPF/CNPJ e telefone ignora formatação — digitar só números encontra "123.456.789-00" e "(11) 99999-8888"
