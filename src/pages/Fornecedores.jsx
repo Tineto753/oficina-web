@@ -256,11 +256,22 @@ export default function Fornecedores() {
                 onMouseEnter={e => e.currentTarget.style.background = 'var(--bg-subtle)'}
                 onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
               >
-                <td style={{ ...S.td, fontWeight: 500 }}>{f.nome}</td>
+                <td style={{ ...S.td, fontWeight: 500 }}>
+                  {f.nome}
+                  {f.eh_estoque && (
+                    <span style={{ marginLeft: '8px', fontSize: '10px', fontWeight: 600, color: 'var(--accent)', border: '1px solid var(--accent)', borderRadius: '4px', padding: '1px 6px', fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em' }}>ESTOQUE</span>
+                  )}
+                </td>
                 <td style={{ ...S.td, color: 'var(--text-muted)' }}>{f.telefone || '—'}</td>
                 <td style={{ ...S.td, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                  <button style={{ ...S.btnSecondary, fontSize: '12px', padding: '4px 10px', marginRight: '6px' }} onClick={() => abrirEdicao(f)}>Editar</button>
-                  <button style={S.btnDanger} onClick={() => handleRemover(f.id)}>Remover</button>
+                  {f.eh_estoque ? (
+                    <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>🔒 fixo (estoque interno)</span>
+                  ) : (
+                    <>
+                      <button style={{ ...S.btnSecondary, fontSize: '12px', padding: '4px 10px', marginRight: '6px' }} onClick={() => abrirEdicao(f)}>Editar</button>
+                      <button style={S.btnDanger} onClick={() => handleRemover(f.id)}>Remover</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
