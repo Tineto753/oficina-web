@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { naoNegativoOuNull } from '../lib/validacao'
 
 const TIPOS = [
   { value: 'servico', label: 'Serviço', color: 'var(--accent)' },
@@ -340,8 +341,8 @@ export default function Servicos() {
     return {
       ...base,
       controla_estoque: controlaEstoque,
-      custo: custo === '' ? null : parseFloat(custo),
-      estoque_minimo: estoqueMin === '' ? 0 : parseFloat(estoqueMin),
+      custo: naoNegativoOuNull(custo),
+      estoque_minimo: naoNegativoOuNull(estoqueMin) ?? 0,
     }
   }
 

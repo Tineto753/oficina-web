@@ -396,7 +396,7 @@ export default function NovaOS() {
     fetchServicosDisponiveis()
     fetchFornecedoresDisponiveis()
     supabase.from('configuracoes').select('valor').eq('chave', 'validade_orcamento_dias').single()
-      .then(({ data }) => { if (data) setValidadeDias(parseInt(data.valor)) })
+      .then(({ data }) => { const n = parseInt(data?.valor); if (Number.isFinite(n) && n > 0) setValidadeDias(n) })
     supabase.from('clientes').select('id, nome_completo').eq('ativo', true).order('nome_completo')
       .then(({ data }) => setTodosClientes(data || []))
   }, [])

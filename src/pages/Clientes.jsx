@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { limpar, numeroOuNull, emailValido, sanitizarCliente } from '../lib/validacao'
 
 const S = {
   page: { },
@@ -334,11 +335,11 @@ function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
     const dados = {
       modelo_id: form.modelo_id,
       placa,
-      ano_fabricacao: parseInt(form.ano_fabricacao),
-      ano_modelo: parseInt(form.ano_modelo),
-      cor: form.cor,
-      chassi: form.chassi,
-      observacoes: form.observacoes,
+      ano_fabricacao: numeroOuNull(form.ano_fabricacao),
+      ano_modelo: numeroOuNull(form.ano_modelo),
+      cor: limpar(form.cor),
+      chassi: limpar(form.chassi).toUpperCase(),
+      observacoes: limpar(form.observacoes),
     }
     if (veiculo) {
       const { error } = await supabase.from('veiculos').update(dados).eq('id', veiculo.id)
@@ -482,7 +483,8 @@ function ClienteModal({ cliente, onAtualizado }) {
   }
 
   async function handleSalvar() {
-    const { error } = await supabase.from('clientes').update(form).eq('id', cliente.id)
+    if (!emailValido(form.email)) { alert('Email inválido'); return }
+    const { error } = await supabase.from('clientes').update(sanitizarCliente(form)).eq('id', cliente.id)
     if (error) { alert('Erro: ' + error.message); return }
     setEditando(false)
     onAtualizado()
@@ -636,7 +638,8 @@ export default function Clientes() {
   }
 
   async function handleSalvar() {
-    const { error } = await supabase.from('clientes').insert([form])
+    if (!emailValido(form.email)) { alert('Email inválido'); return }
+    const { error } = await supabase.from('clientes').insert([sanitizarCliente(form)])
     if (error) { alert('Erro: ' + error.message); return }
     setOpen(false)
     setForm({ nome_completo: '', tipo_pessoa: 'PF', cpf_cnpj: '', telefone: '', email: '', cep: '', logradouro: '', numero: '', complemento: '', bairro: '', cidade: '', uf: '' })

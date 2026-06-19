@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { naoNegativoOuNull } from '../lib/validacao'
 
 const S = {
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' },
@@ -37,10 +38,10 @@ function MovimentarModal({ peca, onClose, onSalvo }) {
   const [minimo, setMinimo] = useState(peca.estoque_minimo ?? '')
 
   async function salvar() {
-    const delta = (parseFloat(entrada) || 0) - (parseFloat(saida) || 0)
+    const delta = Math.max(0, parseFloat(entrada) || 0) - Math.max(0, parseFloat(saida) || 0)
     const update = {
-      custo: custo === '' ? null : parseFloat(custo),
-      estoque_minimo: minimo === '' ? 0 : parseFloat(minimo),
+      custo: naoNegativoOuNull(custo),
+      estoque_minimo: naoNegativoOuNull(minimo) ?? 0,
     }
     if (delta !== 0) update.estoque = (Number(peca.estoque) || 0) + delta
     const { error } = await supabase.from('servicos').update(update).eq('id', peca.id)

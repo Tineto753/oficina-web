@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { numeroOuNull } from '../lib/validacao'
 
 const S = {
   h1: {
@@ -81,9 +82,11 @@ export default function Configuracoes() {
   }, [])
 
   async function handleSalvar() {
+    const dias = numeroOuNull(validade)
+    if (dias === null || dias < 1) { alert('Informe um número de dias válido (mínimo 1).'); return }
     await supabase
       .from('configuracoes')
-      .update({ valor: validade })
+      .update({ valor: String(Math.round(dias)) })
       .eq('chave', 'validade_orcamento_dias')
     setSalvo(true)
     setTimeout(() => setSalvo(false), 2000)
