@@ -391,6 +391,7 @@ export default function NovaOS() {
   const [fornecedorId, setFornecedorId] = useState('')
   const [validadeDias, setValidadeDias] = useState(30)
   const [dataEntrada, setDataEntrada] = useState(new Date().toISOString().split('T')[0])
+  const [salvando, setSalvando] = useState(false)
 
   useEffect(() => {
     fetchServicosDisponiveis()
@@ -459,9 +460,11 @@ export default function NovaOS() {
   }
 
   async function handleSalvar() {
+    if (salvando) return
     if (!clienteSelecionado) { alert('Selecione um cliente'); return }
     if (!veiculoId) { alert('Selecione um veículo'); return }
     if (servicos.length === 0) { alert('Adicione pelo menos um serviço'); return }
+    setSalvando(true)
     const valorTotal = servicos.reduce((acc, s) => acc + s.quantidade * s.preco_cobrado, 0)
     const agora = new Date().toISOString()
     const osData = {
@@ -477,7 +480,7 @@ export default function NovaOS() {
         : null
     }
     const { data: os, error } = await supabase.from('ordens_servico').insert([osData]).select().single()
-    if (error) { alert('Erro: ' + error.message); return }
+    if (error) { alert('Erro: ' + error.message); setSalvando(false); return }
     await supabase.from('os_servicos').insert(
       servicos.map(s => ({
         os_id: os.id,
@@ -707,8 +710,12 @@ export default function NovaOS() {
 
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
         <button style={S.btnSecondary} onClick={() => navigate('/os')}>Cancelar</button>
-        <button style={S.btnPrimary} onClick={handleSalvar}>
-          {tipo === 'aberta' ? 'Abrir OS' : 'Salvar Orçamento'}
+        <button
+          style={{ ...S.btnPrimary, opacity: salvando ? 0.6 : 1, cursor: salvando ? 'not-allowed' : 'pointer' }}
+          onClick={handleSalvar}
+          disabled={salvando}
+        >
+          {salvando ? 'Salvando…' : tipo === 'aberta' ? 'Abrir OS' : 'Salvar Orçamento'}
         </button>
       </div>
     </div>

@@ -563,7 +563,8 @@ function OSCard({ os, onAtualizado, autoOpen }) {
 
   async function handleCancelar() {
     if (!confirm('Cancelar esta OS?')) return
-    await supabase.from('ordens_servico').update({ status: 'cancelado' }).eq('id', os.id)
+    const { error } = await supabase.from('ordens_servico').update({ status: 'cancelado' }).eq('id', os.id)
+    if (error) { alert('Erro ao cancelar: ' + error.message); return }
     setOpen(false)
     onAtualizado()
   }
