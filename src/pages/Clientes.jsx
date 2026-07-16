@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { limpar, numeroOuNull, emailValido, sanitizarCliente } from '../lib/validacao'
+import { camposModelo } from '../lib/fipe-parse'
+import Combobox from '../components/Combobox'
+import ModeloPicker from '../components/ModeloPicker'
+import NovoModeloForm from '../components/NovoModeloForm'
 
 const S = {
   page: { },
@@ -298,7 +302,7 @@ function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
         const res = await fetch(`https://fipe.parallelum.com.br/api/v2/cars/brands/${marca.codigo_fipe}/models`)
         const fipeModelos = await res.json()
         if (Array.isArray(fipeModelos)) {
-          const rows = fipeModelos.map(m => ({ marca_id: marcaId, nome: m.name }))
+          const rows = fipeModelos.map(m => ({ marca_id: marcaId, nome: m.name, ...camposModelo(m.name) }))
           await supabase.from('modelos').insert(rows)
         }
       } catch {}
@@ -314,11 +318,20 @@ function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
     setAddMarca(false)
   }
 
-  async function salvarNovoModelo() {
-    const { data } = await supabase.from('modelos').insert([{ marca_id: form.marca_id, nome: novoModelo }]).select().single()
+  // Vem do NovoModeloForm: ou um registro que já existia (duplicata exata), ou
+  // os campos já segregados para inserir. O parse por regex não entra aqui — o
+  // que o funcionário escolheu campo a campo vale mais que a adivinhação.
+  async function confirmarNovoModelo({ existente, campos }) {
+    if (existente) {
+      setForm(f => ({ ...f, modelo_id: existente.id }))
+      setAddModelo(false)
+      return
+    }
+    const { data, error } = await supabase
+      .from('modelos').insert([{ marca_id: form.marca_id, ...campos }]).select().single()
+    if (error || !data) return
     setModelos(m => [...m, data])
     setForm(f => ({ ...f, modelo_id: data.id }))
-    setNovoModelo('')
     setAddModelo(false)
   }
 
@@ -371,11 +384,13 @@ function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
               </div>
             ) : (
               <div style={S.row}>
-                <select style={S.select} value={form.marca_id} onChange={e => handleMarcaChange(e.target.value)}>
-                  <option value="">Selecione a marca</option>
-                  {marcas.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
-                <button style={S.btnSecondary} onClick={() => setAddMarca(true)}>+ Nova</button>
+                <Combobox
+                  options={marcas}
+                  value={form.marca_id}
+                  onChange={handleMarcaChange}
+                  placeholder="Buscar marca…"
+                />
+                <button style={{ ...S.btnSecondary, whiteSpace: 'nowrap' }} onClick={() => setAddMarca(true)}>+ Nova</button>
               </div>
             )}
           </div>
@@ -383,18 +398,24 @@ function VeiculoModal({ clienteId, onSalvo, veiculo = null }) {
           <div style={S.colSpan2}>
             <Label>Modelo</Label>
             {addModelo ? (
-              <div style={S.row}>
-                <Input value={novoModelo} onChange={e => setNovoModelo(e.target.value)} placeholder="Nome do modelo" />
-                <button style={S.btnPrimary} onClick={salvarNovoModelo}>Salvar</button>
-                <button style={S.btnSecondary} onClick={() => setAddModelo(false)}>×</button>
-              </div>
+              <NovoModeloForm
+                busca={novoModelo}
+                modelosExistentes={modelos}
+                onCancel={() => setAddModelo(false)}
+                onConfirmar={confirmarNovoModelo}
+              />
             ) : (
-              <div style={S.row}>
-                <select style={S.select} value={form.modelo_id} onChange={e => setForm(f => ({ ...f, modelo_id: e.target.value }))} disabled={!form.marca_id}>
-                  <option value="">Selecione o modelo</option>
-                  {modelos.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
-                </select>
-                <button style={S.btnSecondary} onClick={() => setAddModelo(true)} disabled={!form.marca_id}>+ Novo</button>
+              <div style={{ ...S.row, alignItems: 'flex-end' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <ModeloPicker
+                    modelos={modelos}
+                    value={form.modelo_id}
+                    onChange={id => setForm(f => ({ ...f, modelo_id: id }))}
+                    onBuscaChange={setNovoModelo}
+                    disabled={!form.marca_id}
+                  />
+                </div>
+                <button style={{ ...S.btnSecondary, whiteSpace: 'nowrap' }} onClick={() => setAddModelo(true)} disabled={!form.marca_id}>+ Novo</button>
               </div>
             )}
           </div>

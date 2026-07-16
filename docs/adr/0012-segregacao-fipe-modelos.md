@@ -1,8 +1,14 @@
 # 0012 — Segregação dos modelos FIPE (classificação para compatibilidade)
 
-- **Status:** Aceita
+- **Status:** Aceita — **estendida pela [0013](./0013-segregacao-completa-atributos-modelo.md)** (2026-07-16)
 - **Data:** 2026-06-19
 - **Foco:** dados de veículo (base para compatibilidade de peças)
+
+> **Atenção:** a decisão de deixar câmbio, portas, carroceria, tração e cilindros
+> de fora (ver "Decisão") **não vale mais** — a ADR 0013 passou a persistir todos,
+> por um motivo que esta ADR não considerou: identificação do carro no cadastro,
+> não casamento de peça. `modelo_base` também mudou de significado: agora contém
+> só o nome do modelo, com `versao` e `tecnologia` em colunas próprias.
 
 ## Contexto
 

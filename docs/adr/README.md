@@ -18,7 +18,8 @@ Status possíveis: `Proposta` · `Aceita` · `Superada por NNNN` · `Descartada`
 | [0009](0009-item-faturado-oficina-vs-externalizado.md) | Item da OS: faturado pela oficina × externalizado | Aceita | 2026-06-17 |
 | [0010](0010-contas-a-pagar-compras-e-despesas.md) | Contas a pagar: compras e despesas (separadas) | Aceita | 2026-06-17 |
 | [0011](0011-fluxo-de-caixa-e-dashboard.md) | Fluxo de caixa e dashboard | Aceita | 2026-06-17 |
-| [0012](0012-segregacao-fipe-modelos.md) | Segregação dos modelos FIPE (núcleo + turbo) | Aceita | 2026-06-19 |
+| [0012](0012-segregacao-fipe-modelos.md) | Segregação dos modelos FIPE (núcleo + turbo) | Aceita (estendida pela 0013) | 2026-06-19 |
+| [0013](0013-segregacao-completa-atributos-modelo.md) | Segregação completa dos atributos de modelo | Aceita | 2026-07-16 |
 
 ## Contexto geral
 
