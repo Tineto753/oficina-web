@@ -657,7 +657,7 @@ export default function Clientes() {
     // Traz as placas junto: a busca por placa é como o balcão identifica o
     // cliente quando o carro chega — muitas vezes antes de saber o nome.
     const { data } = await supabase
-      .from('clientes').select('*, veiculos(placa, ativo)').order('nome_completo')
+      .from('clientes').select('*, veiculos(placa, ativo)').eq('ativo', true).order('nome_completo')
     setClientes(data || [])
   }
 
