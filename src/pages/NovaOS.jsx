@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import NovoServicoModal from '../components/NovoServicoModal'
 import { parseValor, formatValor } from '../lib/utils'
 
 const TIPOS = [
@@ -273,91 +274,6 @@ function NovoFornecedorModal({ onSalvo }) {
           <div>
             <Label>Telefone</Label>
             <Input value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} placeholder="(00) 00000-0000" />
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-            <button style={S.btnSecondary} onClick={fechar}>Cancelar</button>
-            <button style={S.btnPrimary} onClick={handleSalvar}>Salvar</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function NovoServicoModal({ onSalvo }) {
-  const [open, setOpen] = useState(false)
-  const [form, setForm] = useState({ nome: '', descricao: '', tipo_servico: 'servico' })
-  const [nomeErro, setNomeErro] = useState('')
-
-  function handleNomeChange(valor) {
-    const temInvalido = /[^a-zA-ZÀ-ÿ ]/.test(valor)
-    setNomeErro(temInvalido ? 'Use apenas letras e espaço.' : '')
-    setForm(f => ({ ...f, nome: valor }))
-  }
-
-  function fechar() {
-    setOpen(false)
-    setNomeErro('')
-    setForm({ nome: '', descricao: '', tipo_servico: 'servico' })
-  }
-
-  async function handleSalvar() {
-    if (!form.nome) { alert('Nome é obrigatório'); return }
-    if (nomeErro) { alert('Corrija o nome antes de salvar'); return }
-    const nomeNormalizado = form.nome.trim().toLowerCase().replace(/[^a-zA-ZÀ-ÿ ]/g, '')
-    const { data: existente } = await supabase
-      .from('servicos')
-      .select('id')
-      .eq('nome', nomeNormalizado)
-      .eq('ativo', true)
-      .maybeSingle()
-    if (existente) { alert('Já existe um serviço com este nome.'); return }
-    const { data, error } = await supabase.from('servicos').insert([{ ...form, nome: nomeNormalizado }]).select().single()
-    if (error) { alert('Erro: ' + error.message); return }
-    onSalvo(data)
-    fechar()
-  }
-
-  if (!open) return (
-    <button style={{ ...S.btnSecondary, padding: '6px 12px', fontSize: '12px' }} onClick={() => setOpen(true)}>
-      + Novo Serviço
-    </button>
-  )
-
-  return (
-    <div style={S.overlay} onClick={e => e.target === e.currentTarget && fechar()}>
-      <div style={S.modal}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2 style={S.modalTitle}>Novo Serviço</h2>
-          <button onClick={fechar} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-faint)', fontSize: '20px' }}>×</button>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <Label>Nome</Label>
-            <Input
-              value={form.nome}
-              onChange={e => handleNomeChange(e.target.value)}
-              placeholder="Ex: troca de oleo"
-            />
-            {nomeErro && <span style={S.erro}>{nomeErro}</span>}
-            <span style={S.hint}>Apenas letras e espaço. Será salvo em minúsculo.</span>
-          </div>
-          <div>
-            <Label>Tipo</Label>
-            <select
-              style={S.select}
-              value={form.tipo_servico}
-              onChange={e => setForm(f => ({ ...f, tipo_servico: e.target.value }))}
-            >
-              {TIPOS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
-          </div>
-          <div>
-            <Label>Descrição</Label>
-            <Input
-              value={form.descricao}
-              onChange={e => setForm(f => ({ ...f, descricao: e.target.value }))}
-            />
           </div>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
             <button style={S.btnSecondary} onClick={fechar}>Cancelar</button>

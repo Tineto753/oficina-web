@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { parseValor, formatValor } from '../lib/utils'
 import { gerarHtmlOS } from '../lib/impressao'
+import NovoServicoModal from '../components/NovoServicoModal'
 
 function toLocalInput(iso) {
   if (!iso) return ''
@@ -730,6 +731,12 @@ function OSCard({ os, onAtualizado, autoOpen }) {
               <Input type="number" value={novaQtd} onChange={e => setNovaQtd(e.target.value)} placeholder="Qtd" min="1" style={{ width: '60px' }} />
               <Input type="text" inputMode="decimal" value={novoPreco} onChange={e => setNovoPreco(e.target.value)} onBlur={e => setNovoPreco(formatValor(e.target.value))} placeholder="R$" style={{ width: '90px' }} />
               <button style={S.btnPrimary} onClick={adicionarItemEdit}>+</button>
+            </div>
+            <div style={{ marginTop: '8px' }}>
+              <NovoServicoModal onSalvo={svc => {
+                setServicosDisponiveis(prev => [...prev, svc].sort((a, b) => a.nome.localeCompare(b.nome)))
+                setNovoServicoId(svc.id)
+              }} />
             </div>
             {servicosDisponiveis.find(s => s.id === novoServicoId)?.tipo_servico === 'peca' && (
               <div style={{ display: 'flex', gap: '8px', marginTop: '8px', alignItems: 'center' }}>

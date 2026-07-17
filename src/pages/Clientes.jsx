@@ -654,7 +654,10 @@ export default function Clientes() {
   useEffect(() => { fetchClientes() }, [])
 
   async function fetchClientes() {
-    const { data } = await supabase.from('clientes').select('*').order('nome_completo')
+    // Traz as placas junto: a busca por placa é como o balcão identifica o
+    // cliente quando o carro chega — muitas vezes antes de saber o nome.
+    const { data } = await supabase
+      .from('clientes').select('*, veiculos(placa, ativo)').order('nome_completo')
     setClientes(data || [])
   }
 
@@ -677,11 +680,18 @@ export default function Clientes() {
   }
 
   const norm = busca.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
-  const buscaNum = busca.replace(/\D/g, '')
+  // Só casa CPF/telefone quando a busca não tem letra: "rme3b85" (placa) daria
+  // buscaNum "385" e traria todo telefone que contém 385.
+  const buscaNum = /[a-zA-ZÀ-ÿ]/.test(busca) ? '' : busca.replace(/\D/g, '')
+  // Placa é gravada em maiúscula e sem traço; aceita o jeito que o cliente fala
+  // ("rjr-6e19"). A partir de 3 caracteres para não casar com meio mundo.
+  const buscaPlaca = busca.toUpperCase().replace(/[^A-Z0-9]/g, '')
   const clientesFiltrados = clientes.filter(c =>
     c.nome_completo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes(norm) ||
     (buscaNum && (c.cpf_cnpj || '').replace(/\D/g, '').includes(buscaNum)) ||
-    (buscaNum && (c.telefone || '').replace(/\D/g, '').includes(buscaNum))
+    (buscaNum && (c.telefone || '').replace(/\D/g, '').includes(buscaNum)) ||
+    (buscaPlaca.length >= 3 && (c.veiculos || []).some(v =>
+      v.ativo !== false && (v.placa || '').includes(buscaPlaca)))
   )
 
   return (
@@ -695,7 +705,7 @@ export default function Clientes() {
         <Input
           value={busca}
           onChange={e => setBusca(e.target.value)}
-          placeholder="Buscar por nome, CPF/CNPJ ou telefone..."
+          placeholder="Buscar por nome, placa, CPF/CNPJ ou telefone..."
         />
       </div>
 

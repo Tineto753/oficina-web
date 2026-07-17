@@ -78,7 +78,20 @@ function Filtro({ label, valor, onChange, info, largo }) {
 export default function ModeloPicker({ modelos = [], value, onChange, onBuscaChange, disabled }) {
   const [f, setF] = useState(VAZIO)
   const [mais, setMais] = useState(false)
-  const set = (k, v) => setF(p => ({ ...p, [k]: v }))
+
+  const aplica = (filtros, m) => Object.entries(filtros).every(([k, v]) => !v || bate(m, k, v))
+
+  function set(k, v) {
+    const novos = { ...f, [k]: v }
+    setF(novos)
+    const restantes = modelos.filter(m => aplica(novos, m))
+    // Sobrou um só: preenche sozinho. O funcionário já disse tudo que sabia do
+    // carro — não faz sentido pedir que ele clique para confirmar o óbvio.
+    if (restantes.length === 1) onChange?.(restantes[0].id)
+    // O que estava escolhido saiu da peneira: limpa, senão fica selecionado um
+    // modelo que nem aparece mais na lista.
+    else if (value && !restantes.some(m => m.id === value)) onChange?.('')
+  }
 
   // Opções de cada campo vêm dos modelos que sobrevivem aos OUTROS filtros —
   // assim as combinações oferecidas sempre têm resultado.
@@ -98,10 +111,7 @@ export default function ModeloPicker({ modelos = [], value, onChange, onBuscaCha
     return out
   }, [modelos, f])
 
-  const filtrados = useMemo(
-    () => modelos.filter(m => Object.entries(f).every(([k, v]) => !v || bate(m, k, v))),
-    [modelos, f]
-  )
+  const filtrados = useMemo(() => modelos.filter(m => aplica(f, m)), [modelos, f])
 
   const ativos = Object.values(f).filter(Boolean).length
 
