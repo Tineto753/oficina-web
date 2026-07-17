@@ -47,6 +47,21 @@ const S = {
 
 const chave = s => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s+/g, ' ').trim()
 
+// Levenshtein enxuto \u2014 s\u00f3 pra pegar typo de 1-2 letras no nome do modelo.
+function dist(a, b) {
+  const m = a.length, n = b.length
+  if (Math.abs(m - n) > 2) return 99          // diferen\u00e7a grande n\u00e3o \u00e9 typo \u2014 corta cedo
+  const d = Array.from({ length: m + 1 }, (_, i) => [i, ...Array(n).fill(0)])
+  for (let j = 0; j <= n; j++) d[0][j] = j
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1, d[i][j - 1] + 1,
+        d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1),
+      )
+  return d[m][n]
+}
+
 // O que define "é o mesmo modelo". `nome` fica de fora de propósito — a ordem
 // das palavras varia entre a FIPE e o nome montado aqui.
 const ATRIBUTOS = [
@@ -102,6 +117,24 @@ export default function NovoModeloForm({ busca = '', modelosExistentes = [], onC
     const alvo = camposDoFormulario(form)
     return modelosExistentes.find(m => ATRIBUTOS.every(k => chave(String(m[k] ?? '')) === chave(String(alvo[k] ?? '')))) || null
   }, [form, modelosExistentes])
+
+  // "Parecidos" = mesmo modelo_base a 1-2 edições de distância, mas NÃO idêntico.
+  // Não bloqueia: erro de conteúdo (Unno, HR-V/HRV) o código não tem como decidir
+  // sozinho sem arriscar juntar carro errado — quem sabe é o funcionário.
+  const parecidos = useMemo(() => {
+    const alvo = chave(form.modelo)
+    if (duplicata || alvo.length < 3) return []
+    const vistos = new Set()
+    return modelosExistentes
+      .filter(m => {
+        const k = chave(String(m.modelo_base ?? ''))
+        if (!k || k === alvo) return false                        // idêntico já é duplicata
+        const d = dist(alvo, k)
+        return d > 0 && d <= 2 && d <= Math.ceil(alvo.length / 3) // proporcional: não marca curto demais
+      })
+      .filter(m => { const k = m.modelo_base; if (vistos.has(k)) return false; vistos.add(k); return true })
+      .slice(0, 4)
+  }, [form.modelo, duplicata, modelosExistentes])
 
   function confirmar() {
     if (!form.modelo.trim()) return
@@ -194,6 +227,26 @@ export default function NovoModeloForm({ busca = '', modelosExistentes = [], onC
       {duplicata && (
         <div style={S.aviso}>
           Esse modelo já existe: <strong>{duplicata.nome}</strong>. Salvar vai usar o que já está cadastrado, sem criar outro igual.
+        </div>
+      )}
+
+      {!duplicata && parecidos.length > 0 && (
+        <div style={{ ...S.aviso, background: 'var(--bg-subtle)', borderColor: 'var(--border)' }}>
+          Parecido com o que já existe — quis dizer um destes?
+          <div style={{ marginTop: 6, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {parecidos.map(m => (
+              <button
+                key={m.id}
+                style={{ ...S.btnSecondary, padding: '4px 10px', fontSize: 12 }}
+                onClick={() => onConfirmar({ existente: m })}
+              >
+                {m.modelo_base}
+              </button>
+            ))}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 12, color: 'var(--text-muted)' }}>
+            Se for outro carro mesmo, é só salvar normalmente.
+          </div>
         </div>
       )}
 
