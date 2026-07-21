@@ -290,6 +290,7 @@ function OSCard({ os, onAtualizado, autoOpen }) {
   // edit mode
   const [editando, setEditando] = useState(false)
   const [itensEdit, setItensEdit] = useState([])
+  const uidSeq = useRef(0)
   const [kmEdit, setKmEdit] = useState('')
   const [obsEdit, setObsEdit] = useState('')
   const [dataSolicitadaEdit, setDataSolicitadaEdit] = useState('')
@@ -336,16 +337,21 @@ function OSCard({ os, onAtualizado, autoOpen }) {
   const valorTotal = itens.reduce((acc, i) => acc + (i.quantidade || 1) * parseFloat(i.preco_cobrado || 0), 0)
 
   async function entrarEdicao() {
-    setItensEdit(itens.map(i => ({
-      id: i.id,
-      servico_id: i.servico_id,
-      nome: i.servicos?.nome,
-      tipo_servico: i.servicos?.tipo_servico || 'servico',
-      quantidade: i.quantidade || 1,
-      preco_cobrado: parseFloat(i.preco_cobrado),
-      fornecedor_id: i.fornecedor_id || null,
-      fornecedor_nome: i.fornecedores?.nome || null,
-    })))
+    setItensEdit(itens.map(i => {
+      const preco = parseFloat(i.preco_cobrado)
+      return {
+        uid: i.id,
+        id: i.id,
+        servico_id: i.servico_id,
+        nome: i.servicos?.nome,
+        tipo_servico: i.servicos?.tipo_servico || 'servico',
+        quantidade: i.quantidade || 1,
+        preco_cobrado: preco,
+        precoTexto: formatValor(preco),
+        fornecedor_id: i.fornecedor_id || null,
+        fornecedor_nome: i.fornecedores?.nome || null,
+      }
+    }))
     setKmEdit(os.km_entrada?.toString() || '')
     setObsEdit(os.observacoes || '')
     setDataSolicitadaEdit(os.data_solicitada ? toLocalInput(os.data_solicitada) : '')
@@ -404,13 +410,16 @@ function OSCard({ os, onAtualizado, autoOpen }) {
     const svc = servicosDisponiveis.find(s => s.id === novoServicoId)
     const tipo = svc.tipo_servico || 'servico'
     const forn = tipo === 'peca' && novoFornecedorId ? fornecedoresDisponiveis.find(f => f.id === novoFornecedorId) : null
+    const preco = parseValor(novoPreco)
     setItensEdit(prev => [...prev, {
+      uid: `novo-${++uidSeq.current}`,
       id: null,
       servico_id: novoServicoId,
       nome: svc.nome,
       tipo_servico: tipo,
       quantidade: Math.max(1, parseInt(novaQtd) || 1),
-      preco_cobrado: parseValor(novoPreco),
+      preco_cobrado: preco,
+      precoTexto: formatValor(preco),
       fornecedor_id: forn?.id || null,
       fornecedor_nome: forn?.nome || null,
     }])
@@ -429,26 +438,34 @@ function OSCard({ os, onAtualizado, autoOpen }) {
     if (idsRemovidos.length > 0) {
       await supabase.from('os_servicos').delete().in('id', idsRemovidos)
     }
-    // itens existentes: grava alterações de preço/quantidade
+    // itens existentes: grava alterações de preço/quantidade (em paralelo)
     const existentes = itensEdit.filter(i => i.id)
-    for (const it of existentes) {
-      await supabase.from('os_servicos')
+    const resultados = await Promise.all(existentes.map(it =>
+      supabase.from('os_servicos')
         .update({ quantidade: it.quantidade, preco_cobrado: it.preco_cobrado })
         .eq('id', it.id)
-    }
+    ))
     // itens novos
     const novos = itensEdit.filter(i => !i.id)
     if (novos.length > 0) {
-      await supabase.from('os_servicos').insert(novos.map(i => ({
+      resultados.push(await supabase.from('os_servicos').insert(novos.map(i => ({
         os_id: os.id,
         servico_id: i.servico_id,
         quantidade: i.quantidade,
         preco_cobrado: i.preco_cobrado,
         fornecedor_id: i.fornecedor_id || null,
-      })))
+      }))))
+    }
+    // se algum item falhou, aborta antes de gravar um valor_total divergente
+    const falha = resultados.find(r => r.error)
+    if (falha) {
+      alert(`Erro ao salvar os itens: ${falha.error.message}`)
+      await fetchItens()
+      setLoading(false)
+      return
     }
     // atualiza OS
-    const novoTotal = itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0)
+    const novoTotal = itensEdit.reduce((acc, i) => acc + i.quantidade * (Number(i.preco_cobrado) || 0), 0)
     await supabase.from('ordens_servico').update({
       cliente_id: clienteEdit?.id || os.cliente_id,
       veiculo_id: veiculoIdEdit || os.veiculo_id,
@@ -703,7 +720,7 @@ function OSCard({ os, onAtualizado, autoOpen }) {
             <table style={S.table}>
               <tbody>
                 {itensEdit.map((item, idx) => (
-                  <tr key={item.id || `new-${idx}`}>
+                  <tr key={item.uid}>
                     <td style={S.td}>
                       {item.nome}
                       {item.fornecedor_nome && <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: '11px' }}>Fornecedor: {item.fornecedor_nome}</span>}
@@ -721,11 +738,12 @@ function OSCard({ os, onAtualizado, autoOpen }) {
                       <Input
                         type="text"
                         inputMode="decimal"
-                        defaultValue={formatValor(item.preco_cobrado)}
-                        onBlur={e => {
-                          const v = parseValor(e.target.value)
-                          updateItemEdit(idx, { preco_cobrado: v })
-                          e.target.value = formatValor(v)
+                        value={item.precoTexto}
+                        onChange={e => updateItemEdit(idx, { precoTexto: e.target.value })}
+                        onBlur={() => {
+                          const v = parseValor(item.precoTexto)
+                          const valido = Number.isFinite(v) ? v : 0
+                          updateItemEdit(idx, { preco_cobrado: valido, precoTexto: formatValor(valido) })
                         }}
                         style={{ padding: '5px 6px', textAlign: 'right' }}
                       />
@@ -784,7 +802,7 @@ function OSCard({ os, onAtualizado, autoOpen }) {
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px', paddingTop: '12px', borderTop: '1px solid var(--border)' }}>
               <span style={{ fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '14px', color: 'var(--success)' }}>
-                R$ {formatValor(itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0))}
+                R$ {formatValor(itensEdit.reduce((acc, i) => acc + i.quantidade * (Number(i.preco_cobrado) || 0), 0))}
               </span>
               <div style={{ display: 'flex', gap: '10px' }}>
                 <button style={S.btnSecondary} onClick={() => setEditando(false)}>Cancelar</button>
