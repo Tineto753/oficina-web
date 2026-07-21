@@ -394,6 +394,10 @@ function OSCard({ os, onAtualizado, autoOpen }) {
     setVeiculosEdit(data || [])
   }
 
+  function updateItemEdit(idx, patch) {
+    setItensEdit(prev => prev.map((it, i) => i === idx ? { ...it, ...patch } : it))
+  }
+
   function adicionarItemEdit() {
     if (!novoServicoId || !novoPreco) { alert('Selecione o serviço e informe o preço'); return }
     if (itensEdit.find(i => i.servico_id === novoServicoId)) { alert('Serviço já adicionado'); return }
@@ -424,6 +428,13 @@ function OSCard({ os, onAtualizado, autoOpen }) {
     const idsRemovidos = idsOriginais.filter(id => !idsRestantes.includes(id))
     if (idsRemovidos.length > 0) {
       await supabase.from('os_servicos').delete().in('id', idsRemovidos)
+    }
+    // itens existentes: grava alterações de preço/quantidade
+    const existentes = itensEdit.filter(i => i.id)
+    for (const it of existentes) {
+      await supabase.from('os_servicos')
+        .update({ quantidade: it.quantidade, preco_cobrado: it.preco_cobrado })
+        .eq('id', it.id)
     }
     // itens novos
     const novos = itensEdit.filter(i => !i.id)
@@ -697,11 +708,27 @@ function OSCard({ os, onAtualizado, autoOpen }) {
                       {item.nome}
                       {item.fornecedor_nome && <span style={{ display: 'block', color: 'var(--text-faint)', fontSize: '11px' }}>Fornecedor: {item.fornecedor_nome}</span>}
                     </td>
-                    <td style={{ ...S.td, color: 'var(--text-faint)', textAlign: 'center', width: '40px' }}>
-                      {item.quantidade > 1 ? `${item.quantidade}×` : ''}
+                    <td style={{ ...S.td, textAlign: 'center', width: '54px' }}>
+                      <Input
+                        type="number"
+                        min="1"
+                        value={item.quantidade}
+                        onChange={e => updateItemEdit(idx, { quantidade: Math.max(1, parseInt(e.target.value) || 1) })}
+                        style={{ padding: '5px 6px', textAlign: 'center' }}
+                      />
                     </td>
-                    <td style={{ ...S.td, textAlign: 'right', fontWeight: 600, width: '90px' }}>
-                      R$ {formatValor(item.quantidade * item.preco_cobrado)}
+                    <td style={{ ...S.td, textAlign: 'right', width: '96px' }}>
+                      <Input
+                        type="text"
+                        inputMode="decimal"
+                        defaultValue={formatValor(item.preco_cobrado)}
+                        onBlur={e => {
+                          const v = parseValor(e.target.value)
+                          updateItemEdit(idx, { preco_cobrado: v })
+                          e.target.value = formatValor(v)
+                        }}
+                        style={{ padding: '5px 6px', textAlign: 'right' }}
+                      />
                     </td>
                     <td style={{ ...S.td, width: '30px', borderBottom: '1px solid var(--border)' }}>
                       <button
