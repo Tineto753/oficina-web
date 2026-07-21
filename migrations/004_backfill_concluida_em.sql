@@ -7,6 +7,12 @@
 -- concluídos antes do campo existir ficariam fora de qualquer período.
 --
 -- Rode a PARTE 1 primeiro. Se o count for 0, nada a fazer — não rode a PARTE 2.
+--
+-- VERIFICADO EM 21/07/2026 (via REST, chave anon):
+--   OS concluídas sem concluida_em ... 0
+--   OS concluídas no total .......... 205
+-- Ou seja: nenhum registro legado, a PARTE 2 é desnecessária neste banco.
+-- O arquivo fica como diagnóstico para outros ambientes/restores.
 
 -- ── PARTE 1: diagnóstico ──────────────────────────────────────────────────
 -- Quantas OS concluídas estão sem data de conclusão, e de quando são.
