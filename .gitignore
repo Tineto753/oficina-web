@@ -3,3 +3,9 @@ dist/
 .env
 *.local
 scripts/aplicacoes_cache/
+
+# Legado arquivado (local)
+archive/
+
+# Estado local do Netlify
+.netlify/state.json
