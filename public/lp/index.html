@@ -1,0 +1,637 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Auto Almeida — Oficina Mecânica | Qualidade que você vê</title>
+<meta name="description" content="Oficina mecânica Auto Almeida. Diagnóstico honesto, orçamento aprovado antes de qualquer serviço e peça com nota. Fale no WhatsApp.">
+<meta name="theme-color" content="#0A0A0A">
+
+<meta property="og:type" content="website">
+<meta property="og:title" content="Auto Almeida — Oficina Mecânica">
+<meta property="og:description" content="Qualidade que você vê, confiança que você sente.">
+<!-- TROCAR: descomentar quando existir a imagem 1200x630 em /lp/og.jpg -->
+<!-- <meta property="og:image" content="/lp/og.jpg"> -->
+<meta property="og:locale" content="pt_BR">
+
+<link rel="icon" href="/favicon.svg">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:ital,wght@1,900&family=Barlow+Condensed:wght@500;600&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+
+<!--
+  ============================================================================
+  CONFIGURAÇÃO — TROCAR OS PLACEHOLDERS ABAIXO
+  ============================================================================
+  Contato, endereço e horário já estão preenchidos com os dados reais.
+  Procure por "TROCAR" no arquivo. Falta:
+
+  1. FOTOS     — o bloco .shot está com fundo CSS; para usar foto real,
+                 descomente a <img> dentro e gere a imagem com o prompt mestre
+                 do docs/brand-book.md §7 (assunto sugerido no comentário).
+  2. OG:IMAGE  — a meta está comentada. Sem ela, link compartilhado no WhatsApp
+                 aparece sem miniatura. Gerar 1200x630 e salvar em /lp/og.jpg.
+  3. GARANTIA  — a faixa diz "90 dias de garantia"; é estimativa, conferir.
+                 (Os 30 anos de oficina estão confirmados.)
+
+  Identidade: docs/brand-book.md · tokens equivalentes em src/styles/brand.css
+  ============================================================================
+-->
+
+<style>
+/* ---------------------------------------------------------------- tokens */
+:root {
+  --red: #E10600;
+  --red-glow: #F60202;
+  --red-shade: #8F0709;
+  --red-grad: linear-gradient(180deg, #F60202 0%, #B10101 55%, #8F0709 100%);
+  --black: #0A0A0A;
+  --surface: #141414;
+  --surface-2: #1C1C1C;
+  --chrome: #C0C0C2;
+  --chrome-grad: linear-gradient(180deg, #FFF 0%, #DCDCDC 48%, #8E8E8E 52%, #BBB9BA 100%);
+  --text: #E8E8E8;
+  --muted: #8A8A8A;
+  --radius: 4px;
+  --pad: clamp(1.25rem, 5vw, 6rem);
+  --font-display: 'Saira Condensed', 'Archivo Black', sans-serif;
+  --font-label: 'Barlow Condensed', sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--black);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 17px;
+  line-height: 1.65;
+  overflow-x: hidden;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
+
+/* ------------------------------------------------------------ tipografia */
+.display {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  text-transform: uppercase;
+  letter-spacing: -0.02em;
+  line-height: 0.9;
+  margin: 0;
+}
+.chrome {
+  background: var(--chrome-grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--chrome);
+}
+.red-text {
+  background: var(--red-grad);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--red);
+}
+.label {
+  font-family: var(--font-label);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.28em;
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin: 0 0 1rem;
+}
+.num { font-variant-numeric: tabular-nums; }
+.lead { color: var(--muted); max-width: 52ch; font-size: 1.02rem; }
+
+/* ------------------------------------------------------- shape da marca  */
+.slash {
+  height: 4px; width: 110px;
+  background: var(--red);
+  transform: skewX(-20deg);
+  clip-path: polygon(0 0, 100% 0, 92% 100%, 0 100%);
+  margin-bottom: 1.5rem;
+}
+.divider { height: 1px; border: 0; background: rgba(225,6,0,.2); margin: 0; }
+
+/* ---------------------------------------------------------------- layout */
+section { padding: clamp(4rem, 9vw, 7.5rem) var(--pad); }
+section[id] { scroll-margin-top: 76px; } /* compensa a nav sticky nos âncoras */
+.wrap { max-width: 1180px; margin: 0 auto; }
+.head { margin-bottom: clamp(2.5rem, 5vw, 4rem); }
+.head h2 { font-size: clamp(2.1rem, 6vw, 3.6rem); }
+
+/* --------------------------------------------------------------- botões  */
+.btn {
+  display: inline-flex; align-items: center; gap: .6rem;
+  font-family: var(--font-label); font-weight: 600;
+  text-transform: uppercase; letter-spacing: .12em; font-size: .95rem;
+  padding: .95rem 1.9rem;
+  border: 0; border-radius: var(--radius);
+  background: var(--red-grad); color: #FFF;
+  text-decoration: none; cursor: pointer;
+  transition: filter .18s, transform .18s;
+}
+.btn:hover { filter: brightness(1.15); transform: translateY(-1px); }
+.btn:active { filter: brightness(.85); transform: none; }
+.btn--ghost {
+  background: transparent; color: var(--text);
+  border: 1px solid rgba(192,192,194,.45);
+}
+.btn--ghost:hover { border-color: var(--red); color: var(--red); filter: none; }
+.btn svg { width: 20px; height: 20px; fill: currentColor; flex: none; }
+
+/* ------------------------------------------------------------------- nav */
+header.nav {
+  position: sticky; top: 0; z-index: 50;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: .85rem var(--pad);
+  background: rgba(10,10,10,.82);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(225,6,0,.2);
+}
+.logo { display: flex; align-items: baseline; gap: .3rem; text-decoration: none; }
+.logo .a { font-size: 1.45rem; }
+.logo .b { font-size: 1.45rem; }
+.nav-links { display: none; gap: 2rem; font-family: var(--font-label);
+  font-weight: 600; text-transform: uppercase; letter-spacing: .16em; font-size: .82rem; }
+.nav-links a { text-decoration: none; color: var(--text); transition: color .15s; }
+.nav-links a:hover { color: var(--red); }
+.nav .btn { padding: .6rem 1.15rem; font-size: .8rem; }
+@media (min-width: 900px) { .nav-links { display: flex; } }
+
+/* ------------------------------------------------------------------ hero */
+.hero {
+  position: relative;
+  min-height: min(88svh, 780px);
+  display: flex; align-items: center;
+  padding-block: clamp(4rem, 12vw, 8rem);
+  overflow: hidden;
+}
+/* palco: aço escovado + faixas de luz vermelha na diagonal (§6) */
+.hero::before {
+  content: ''; position: absolute; inset: 0; z-index: 0;
+  background:
+    linear-gradient(115deg, rgba(225,6,0,.16) 0%, transparent 38%),
+    linear-gradient(115deg, transparent 52%, rgba(225,6,0,.09) 56%, transparent 60%),
+    repeating-linear-gradient(97deg, rgba(255,255,255,.022) 0 2px, transparent 2px 7px),
+    radial-gradient(ellipse 90% 70% at 78% 18%, rgba(192,192,194,.10), transparent 70%),
+    #0A0A0A;
+}
+/* vinheta obrigatória sob o texto (§5.2) */
+.hero::after {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 30%, rgba(0,0,0,.82) 100%);
+}
+.hero .wrap { position: relative; z-index: 2; width: 100%; }
+.hero h1 { font-size: clamp(3rem, 11vw, 7.5rem); }
+.hero h1 .l2 { display: block; }
+.hero .lead { margin: 1.6rem 0 2.4rem; font-size: clamp(1rem, 2.2vw, 1.2rem); }
+.hero-cta { display: flex; flex-wrap: wrap; gap: 1rem; }
+.hero-note {
+  margin-top: 2.2rem; font-family: var(--font-label); font-weight: 500;
+  text-transform: uppercase; letter-spacing: .18em; font-size: .74rem; color: var(--muted);
+}
+
+/* --------------------------------------------------------- faixa de prova */
+.strip {
+  display: grid; gap: 1px;
+  grid-template-columns: repeat(2, 1fr);
+  background: rgba(225,6,0,.2);
+  border-block: 1px solid rgba(225,6,0,.2);
+}
+.strip div { background: var(--black); padding: 1.9rem 1.25rem; text-align: center; }
+.strip b {
+  display: block; font-family: var(--font-display); font-style: italic;
+  font-weight: 900; font-size: clamp(1.9rem, 5vw, 2.7rem); line-height: 1;
+  color: var(--chrome);
+}
+.strip span {
+  font-family: var(--font-label); text-transform: uppercase; letter-spacing: .2em;
+  font-size: .68rem; color: var(--muted); display: block; margin-top: .55rem;
+}
+@media (min-width: 780px) { .strip { grid-template-columns: repeat(4, 1fr); } }
+
+/* -------------------------------------------------------------- serviços */
+.grid { display: grid; gap: 1.25rem; grid-template-columns: 1fr; }
+@media (min-width: 640px) { .grid { grid-template-columns: repeat(2, 1fr); } }
+@media (min-width: 1000px) { .grid { grid-template-columns: repeat(3, 1fr); } }
+
+.card {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid rgba(225,6,0,.2);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  transition: border-color .2s, transform .2s, background .2s;
+}
+.card::before {
+  content: ''; position: absolute; top: 0; left: 0;
+  width: 46px; height: 3px; background: var(--red);
+  transform: skewX(-20deg) translateX(4px);
+  opacity: 0; transition: opacity .2s;
+}
+.card:hover { border-color: rgba(225,6,0,.55); background: var(--surface-2); transform: translateY(-2px); }
+.card:hover::before { opacity: 1; }
+.card h3 {
+  font-family: var(--font-display); font-style: italic; font-weight: 900;
+  text-transform: uppercase; letter-spacing: -.01em;
+  font-size: 1.5rem; margin: .9rem 0 .5rem; color: var(--chrome);
+}
+.card p { margin: 0; color: var(--muted); font-size: .95rem; }
+.card .ico { width: 30px; height: 30px; stroke: var(--red); fill: none; stroke-width: 1.6; }
+
+/* --------------------------------------------------------- como funciona */
+.steps { display: grid; gap: 2.5rem; grid-template-columns: 1fr; counter-reset: s; }
+@media (min-width: 860px) { .steps { grid-template-columns: repeat(3, 1fr); gap: 2rem; } }
+.step { position: relative; padding-top: 1.75rem; border-top: 1px solid rgba(225,6,0,.2); }
+.step::before {
+  counter-increment: s; content: '0' counter(s);
+  font-family: var(--font-display); font-style: italic; font-weight: 900;
+  font-size: 3.4rem; line-height: 1; color: rgba(225,6,0,.28);
+  display: block; margin-bottom: .5rem;
+}
+.step h3 {
+  font-family: var(--font-display); font-style: italic; font-weight: 900;
+  text-transform: uppercase; font-size: 1.45rem; margin: 0 0 .55rem; color: var(--chrome);
+}
+.step p { margin: 0; color: var(--muted); font-size: .95rem; }
+
+/* ------------------------------------------------------------ diferencial */
+/* título que quebra em várias linhas precisa de folga p/ acentos (Ê, Ç) */
+.split h2, .final h2, .hero h1 { line-height: 1.04; }
+.split { display: grid; gap: clamp(2rem, 5vw, 4rem); align-items: center; grid-template-columns: 1fr; }
+@media (min-width: 940px) { .split { grid-template-columns: 1.05fr .95fr; } }
+
+/* slot de foto — fundo CSS enquanto não há imagem real (ver bloco CONFIGURAÇÃO) */
+.shot {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius);
+  border: 1px solid rgba(225,6,0,.2);
+  aspect-ratio: 4 / 3;
+  background:
+    linear-gradient(120deg, rgba(225,6,0,.22) 0%, transparent 45%),
+    repeating-linear-gradient(101deg, rgba(255,255,255,.03) 0 2px, transparent 2px 9px),
+    radial-gradient(ellipse 70% 60% at 30% 25%, rgba(192,192,194,.13), transparent 68%),
+    #101010;
+}
+.shot::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(0,0,0,.75) 100%);
+}
+.shot img { width: 100%; height: 100%; object-fit: cover; filter: saturate(.75) contrast(1.1); }
+
+.checks { list-style: none; margin: 1.75rem 0 0; padding: 0; display: grid; gap: 1.1rem; }
+.checks li { display: flex; gap: .9rem; align-items: flex-start; }
+.checks svg { width: 20px; height: 20px; flex: none; margin-top: .28rem; stroke: var(--red); fill: none; stroke-width: 2.2; }
+.checks b { display: block; color: var(--text); font-weight: 700; font-size: 1rem; }
+.checks span { color: var(--muted); font-size: .93rem; }
+
+/* --------------------------------------------------------------- contato */
+.contact { background: var(--surface); }
+.contact .grid { gap: 1.25rem; }
+.info { display: grid; gap: .35rem; }
+.info .label { margin: 0 0 .4rem; }
+.info a { color: var(--text); text-decoration: none; font-size: 1.15rem; font-weight: 500; transition: color .15s; }
+.info a:hover { color: var(--red); }
+.info p { margin: 0; color: var(--muted); font-size: .95rem; }
+.hours { display: grid; grid-template-columns: auto 1fr; gap: .35rem 1.5rem; font-size: .95rem; }
+.hours dt { color: var(--muted); }
+.hours dd { margin: 0; color: var(--text); }
+/* vermelho não passa AA em texto pequeno sobre preto (§5.2) — só no hover */
+.info a.maps-link { font-size: .95rem; text-decoration: underline; text-underline-offset: 4px; }
+.maps-link:hover { color: var(--red); }
+
+/* ------------------------------------------------------------- CTA final */
+.final { text-align: center; position: relative; overflow: hidden; }
+.final::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(120deg, rgba(225,6,0,.14), transparent 55%);
+}
+.final .wrap { position: relative; }
+.final h2 { font-size: clamp(2.3rem, 8vw, 5rem); }
+.final .slash { margin-inline: auto; }
+.final .lead { margin: 1.4rem auto 2.3rem; }
+.final .hero-cta { justify-content: center; }
+
+/* ---------------------------------------------------------------- footer */
+footer {
+  padding: 2.5rem var(--pad);
+  border-top: 1px solid rgba(225,6,0,.2);
+  display: flex; flex-wrap: wrap; gap: 1rem;
+  align-items: center; justify-content: space-between;
+  font-size: .84rem; color: var(--muted);
+}
+footer a { color: var(--muted); text-decoration: none; }
+footer a:hover { color: var(--red); }
+
+/* ------------------------------------------------------- botão flutuante */
+.fab {
+  position: fixed; right: 1.1rem; bottom: 1.1rem; z-index: 60;
+  display: flex; align-items: center; justify-content: center;
+  width: 56px; height: 56px; border-radius: 50%;
+  background: var(--red-grad); color: #FFF;
+  box-shadow: 0 6px 22px rgba(0,0,0,.65);
+  text-decoration: none;
+  transition: filter .18s, transform .18s;
+}
+.fab:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.fab svg { width: 28px; height: 28px; fill: currentColor; }
+@media (min-width: 900px) { .fab { display: none; } }
+
+/* -------------------------------------------------------------- entrada  */
+.rise { opacity: 0; transform: translateY(18px); transition: opacity .6s ease, transform .6s ease; }
+.rise.in { opacity: 1; transform: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .rise { opacity: 1; transform: none; transition: none; }
+  .btn, .card, .fab { transition: none; }
+  .btn:hover, .card:hover, .fab:hover { transform: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- ================================================================= NAV -->
+<header class="nav">
+  <a class="logo display" href="#top" aria-label="Auto Almeida — início">
+    <span class="a chrome">AUTO</span><span class="b red-text">ALMEIDA</span>
+  </a>
+
+  <nav class="nav-links" aria-label="Seções">
+    <a href="#servicos">Serviços</a>
+    <a href="#como">Como funciona</a>
+    <a href="#oficina">A oficina</a>
+    <a href="#contato">Contato</a>
+  </nav>
+
+  <!-- TROCAR: número do WhatsApp -->
+  <a class="btn" href="https://wa.me/5521983173376?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20quero%20um%20or%C3%A7amento." target="_blank" rel="noopener">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.18-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.82c0 4.54-3.7 8.21-8.24 8.21z"/></svg>
+    WhatsApp
+  </a>
+</header>
+
+<!-- ================================================================ HERO -->
+<main id="top">
+<section class="hero">
+  <div class="wrap">
+    <p class="label">Oficina mecânica · Auto Almeida</p>
+    <h1 class="display">
+      <span class="chrome">Seu carro</span>
+      <span class="l2 red-text">na mão certa</span>
+    </h1>
+    <p class="lead">
+      Diagnóstico feito antes do orçamento. Orçamento aprovado antes do serviço.
+      Peça trocada com a peça velha na sua mão. Sem surpresa na hora de pagar.
+    </p>
+
+    <div class="hero-cta">
+      <!-- TROCAR: número do WhatsApp -->
+      <a class="btn" href="https://wa.me/5521983173376?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20quero%20um%20or%C3%A7amento." target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.18-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.82c0 4.54-3.7 8.21-8.24 8.21z"/></svg>
+        Pedir orçamento
+      </a>
+      <!-- TROCAR: telefone -->
+      <a class="btn btn--ghost" href="tel:+5521983173376">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z"/></svg>
+        Ligar agora
+      </a>
+    </div>
+
+    <p class="hero-note">Segunda a sexta, 08h às 18h · Cacuia, Ilha do Governador</p>
+  </div>
+</section>
+
+<!-- ====================================================== FAIXA DE PROVA -->
+<div class="strip">
+  <div><b class="num">30</b><span>Anos de estrada</span></div>
+  <div><b class="num">100%</b><span>Peça com nota</span></div>
+  <div><b class="num">90</b><span>Dias de garantia</span></div>
+  <div><b>OS</b><span>Digital no WhatsApp</span></div>
+</div>
+
+<!-- ============================================================ SERVIÇOS -->
+<section id="servicos">
+  <div class="wrap">
+    <div class="head rise">
+      <div class="slash" aria-hidden="true"></div>
+      <p class="label">O que fazemos</p>
+      <h2 class="display chrome">Serviços</h2>
+      <p class="lead">Mecânica geral com foco em diagnóstico. Se não for o problema, a gente fala — e não cobra por serviço que seu carro não precisa.</p>
+    </div>
+
+    <div class="grid">
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 12l6-6"/><circle cx="12" cy="12" r="1.6"/></svg>
+        <h3>Diagnóstico eletrônico</h3>
+        <p>Scanner OBD em todos os módulos. Você recebe a leitura do erro e a explicação do que ela significa, não só o código.</p>
+      </article>
+
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v6"/><path d="M8 9h8l1 5a5 5 0 0 1-10 0z"/><path d="M9 21h6"/></svg>
+        <h3>Motor e injeção</h3>
+        <p>Revisão, retífica, correia dentada, bicos e bomba. Perda de força, fumaça e consumo alto começam aqui.</p>
+      </article>
+
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 4v2M12 18v2M4 12h2M18 12h2"/></svg>
+        <h3>Freios</h3>
+        <p>Pastilha, disco, fluido e cilindro. Barulho, pedal baixo ou trepidação ao frear não esperam a próxima revisão.</p>
+      </article>
+
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17h4l2-6 3 10 3-14 2 10h4"/></svg>
+        <h3>Suspensão e direção</h3>
+        <p>Amortecedor, batente, bandeja, pivô e terminal. Alinhamento e balanceamento no mesmo dia.</p>
+      </article>
+
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 4v5c0 4.4-3 8.3-7 9-4-.7-7-4.6-7-9V7z"/><path d="M9.5 12l1.8 1.8 3.4-3.6"/></svg>
+        <h3>Revisão preventiva</h3>
+        <p>Óleo, filtros, velas, fluidos e checklist completo. Sai com relatório do que está bom, do que vigiar e do que trocar.</p>
+      </article>
+
+      <article class="card rise">
+        <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14"/><path d="M7 12V8a5 5 0 0 1 10 0v4"/><rect x="4" y="12" width="16" height="8" rx="2"/></svg>
+        <h3>Elétrica e ar-condicionado</h3>
+        <p>Alternador, bateria, partida, chicote e higienização com recarga de gás. Carro que não pega ou não gela.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ====================================================== COMO FUNCIONA -->
+<section id="como">
+  <div class="wrap">
+    <div class="head rise">
+      <div class="slash" aria-hidden="true"></div>
+      <p class="label">Do primeiro contato à entrega</p>
+      <h2 class="display chrome">Como funciona</h2>
+    </div>
+
+    <div class="steps">
+      <div class="step rise">
+        <h3>Chama no WhatsApp</h3>
+        <p>Conta o que está acontecendo com o carro. A gente já diz se dá pra resolver no dia e marca a entrada.</p>
+      </div>
+      <div class="step rise">
+        <h3>Orçamento antes</h3>
+        <p>Fazemos o diagnóstico e mandamos a ordem de serviço com cada item e cada preço. Nada é executado sem o seu OK.</p>
+      </div>
+      <div class="step rise">
+        <h3>Entrega no prazo</h3>
+        <p>Você recebe a nota discriminada e as peças substituídas. Se o prazo mudar, você fica sabendo antes — não na hora de buscar.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ========================================================== A OFICINA -->
+<section id="oficina">
+  <div class="wrap split">
+    <div class="rise">
+      <div class="slash" aria-hidden="true"></div>
+      <p class="label">Por que a Auto Almeida</p>
+      <h2 class="display chrome" style="font-size:clamp(2.1rem,6vw,3.6rem)">Qualidade que você vê,<br><span class="red-text">confiança que você sente</span></h2>
+
+      <ul class="checks">
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+          <div><b>Orçamento aprovado item a item</b><span>Cada peça e cada mão de obra com valor separado. Você aprova o que quiser.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+          <div><b>Peça velha devolvida</b><span>Trocou, você leva a antiga. É a prova de que o serviço foi feito.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+          <div><b>Histórico do seu veículo</b><span>Sistema próprio guarda tudo que já foi feito, com data e quilometragem. Consulta a qualquer momento.</span></div>
+        </li>
+        <li>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5"/></svg>
+          <div><b>Garantia por escrito</b><span>Serviço e peça com garantia registrada na nota. Deu problema, volta sem discussão.</span></div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- FOTO: mecânico de uniforme escuro com torquímetro (brand-book §7.2) -->
+    <div class="shot rise" role="img" aria-label="Interior da oficina Auto Almeida">
+      <!-- <img src="/lp/oficina.jpg" alt="Mecânico da Auto Almeida trabalhando no motor"> -->
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<!-- ============================================================ CONTATO -->
+<section id="contato" class="contact">
+  <div class="wrap">
+    <div class="head rise">
+      <div class="slash" aria-hidden="true"></div>
+      <p class="label">Onde nos achar</p>
+      <h2 class="display chrome">Contato</h2>
+    </div>
+
+    <div class="grid">
+      <div class="card info rise">
+        <p class="label">WhatsApp</p>
+        <!-- TROCAR: número do WhatsApp (link e texto) -->
+        <a class="num" href="https://wa.me/5521983173376?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20quero%20um%20or%C3%A7amento." target="_blank" rel="noopener">(21) 98317-3376</a>
+        <p>Resposta no horário comercial. Manda o modelo, o ano e o que está acontecendo.</p>
+      </div>
+
+      <div class="card info rise">
+        <p class="label">Telefone</p>
+        <a class="num" href="tel:+5521983173376">(21) 98317-3376</a>
+        <p>Prefere falar? É o mesmo número — liga que a gente atende.</p>
+      </div>
+
+      <div class="card info rise">
+        <p class="label">Endereço</p>
+        <a href="https://maps.app.goo.gl/VtyPM3jwqGW79Wwx9" target="_blank" rel="noopener">Miletto Maciel, 667 — Cacuia</a>
+        <p>Ilha do Governador · Rio de Janeiro — RJ</p>
+        <p style="margin-top:.6rem"><a class="maps-link" href="https://maps.app.goo.gl/VtyPM3jwqGW79Wwx9" target="_blank" rel="noopener">Ver rota no Google Maps →</a></p>
+      </div>
+
+      <div class="card rise" style="grid-column: 1 / -1">
+        <p class="label">Horário de funcionamento</p>
+        <dl class="hours">
+          <dt>Segunda a sexta</dt><dd class="num">08:00 — 18:00</dd>
+          <dt>Sábado e domingo</dt><dd>Fechado</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ========================================================== CTA FINAL -->
+<section class="final">
+  <div class="wrap">
+    <div class="slash" aria-hidden="true"></div>
+    <h2 class="display chrome">Traz o carro.<br><span class="red-text">A gente resolve.</span></h2>
+    <p class="lead">Manda uma mensagem contando o problema. Se der pra resolver hoje, a gente te encaixa hoje.</p>
+    <div class="hero-cta">
+      <!-- TROCAR: número do WhatsApp -->
+      <a class="btn" href="https://wa.me/5521983173376?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20quero%20um%20or%C3%A7amento." target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.18-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.82c0 4.54-3.7 8.21-8.24 8.21z"/></svg>
+        Falar no WhatsApp
+      </a>
+      <!-- TROCAR: telefone -->
+      <a class="btn btn--ghost" href="tel:+5521983173376">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.2.4 2.4.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.4 0 .8-.2 1l-2.3 2.2z"/></svg>
+        Ligar
+      </a>
+    </div>
+  </div>
+</section>
+</main>
+
+<!-- ============================================================== FOOTER -->
+<footer>
+  <span class="display" style="font-size:1.1rem">
+    <span class="chrome">AUTO</span><span class="red-text">ALMEIDA</span>
+  </span>
+  <span>© <span class="num" id="ano">2026</span> Auto Almeida Oficina Mecânica. Todos os direitos reservados.</span>
+  <span><a href="#top">Voltar ao topo ↑</a></span>
+</footer>
+
+<!-- TROCAR: número do WhatsApp -->
+<a class="fab" href="https://wa.me/5521983173376?text=Ol%C3%A1%2C%20vim%20pelo%20site%20e%20quero%20um%20or%C3%A7amento." target="_blank" rel="noopener" aria-label="Falar no WhatsApp">
+  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17.47 14.38c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.96-.94 1.16-.17.2-.35.22-.65.07-.3-.15-1.26-.46-2.4-1.48-.89-.79-1.49-1.77-1.66-2.07-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.18.2-.3.3-.5.1-.2.05-.38-.03-.53-.07-.15-.67-1.62-.92-2.22-.24-.58-.49-.5-.67-.51h-.57c-.2 0-.52.07-.8.38-.27.3-1.04 1.02-1.04 2.48s1.07 2.88 1.22 3.08c.15.2 2.1 3.2 5.08 4.49.71.3 1.26.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.18-1.42-.07-.13-.27-.2-.57-.35zM12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91S17.5 2 12.04 2zm0 18.13h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.36c0-4.54 3.7-8.23 8.25-8.23 2.2 0 4.27.86 5.83 2.42a8.2 8.2 0 0 1 2.41 5.82c0 4.54-3.7 8.21-8.24 8.21z"/></svg>
+</a>
+
+<script>
+document.getElementById('ano').textContent = new Date().getFullYear();
+
+// Revelação na entrada — degrada para conteúdo visível se não houver suporte.
+if ('IntersectionObserver' in window) {
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => {
+      if (!e.isIntersecting) return;
+      e.target.classList.add('in');
+      io.unobserve(e.target);
+    });
+  }, { rootMargin: '0px 0px -8% 0px' });
+
+  document.querySelectorAll('.rise').forEach((el, i) => {
+    el.style.transitionDelay = (i % 3) * 70 + 'ms';
+    io.observe(el);
+  });
+} else {
+  document.querySelectorAll('.rise').forEach((el) => el.classList.add('in'));
+}
+</script>
+
+</body>
+</html>
