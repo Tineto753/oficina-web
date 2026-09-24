@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
-import { parseValor, formatValor } from '../lib/utils'
+import { parseValor, formatValor, descricaoPagamento, novaLinhaPgto, linhasPgtoDaOS, validarPgto, camposPgto } from '../lib/utils'
 import { gerarHtmlOS } from '../lib/impressao'
+import PagamentosEditor from '../components/PagamentosEditor'
 
 function Modal({ open, onClose, children }) {
   if (!open) return null
@@ -180,16 +181,6 @@ const statusMap = {
   cancelado: { label: 'Cancelado', color: 'red'   },
 }
 
-const pagamentoLabel = {
-  dinheiro:         'Dinheiro',
-  pix:              'Pix',
-  debito:           'Débito',
-  credito:          'Crédito',
-  cartao:           'Cartão',
-  parcelado:        'Parcelado',
-  entrada_parcelado: 'Entrada + Parcelado',
-}
-
 const TIPOS = [
   { value: 'servico',      label: 'Serviços'      },
   { value: 'peca',         label: 'Peças'          },
@@ -201,9 +192,7 @@ function OSCard({ o, onEditado, veiculo }) {
   const [itensEdit, setItensEdit] = useState([])
   const [kmEdit, setKmEdit] = useState('')
   const [obsEdit, setObsEdit] = useState('')
-  const [formaPagEdit, setFormaPagEdit] = useState('')
-  const [parcelasEdit, setParcelasEdit] = useState('')
-  const [valorEntradaEdit, setValorEntradaEdit] = useState('')
+  const [linhasPgtoEdit, setLinhasPgtoEdit] = useState([novaLinhaPgto()])
   const [dataConclusaoEdit, setDataConclusaoEdit] = useState('')
   const [dataAbertaEdit, setDataAbertaEdit] = useState('')
   const [servicosDisponiveis, setServicosDisponiveis] = useState([])
@@ -229,9 +218,7 @@ function OSCard({ o, onEditado, veiculo }) {
       kmEntrada:        o.km_entrada,
       itens:            (o.os_servicos || []).filter(i => !i.devolvido),
       total:            o.valor_total,
-      formaPagamento:   o.forma_pagamento,
-      parcelas:         o.parcelas,
-      valorEntrada:     o.valor_entrada,
+      pagamento:        o,
       observacoes:      o.observacoes,
       validadeOrcamento: o.validade_orcamento,
     }))
@@ -249,9 +236,7 @@ function OSCard({ o, onEditado, veiculo }) {
     })))
     setKmEdit(o.km_entrada?.toString() || '')
     setObsEdit(o.observacoes || '')
-    setFormaPagEdit(o.forma_pagamento || '')
-    setParcelasEdit(o.parcelas?.toString() || '')
-    setValorEntradaEdit(formatValor(o.valor_entrada))
+    setLinhasPgtoEdit(linhasPgtoDaOS(o))
     setDataConclusaoEdit(o.concluida_em ? o.concluida_em.split('T')[0] : '')
     setDataAbertaEdit(o.aberta_em ? o.aberta_em.split('T')[0] : '')
     setBuscaCliente(o.clientes?.nome_completo || '')
@@ -296,6 +281,13 @@ function OSCard({ o, onEditado, veiculo }) {
   }
 
   async function salvar() {
+    const novoTotalPre = itensEdit.reduce((acc, i) => acc + i.quantidade * i.preco_cobrado, 0)
+    // OS antigas sem forma de pagamento podem ser editadas sem informar uma.
+    const semPgto = linhasPgtoEdit.length === 1 && !linhasPgtoEdit[0].forma
+    if (o.status === 'concluida' && !semPgto) {
+      const erro = validarPgto(linhasPgtoEdit, novoTotalPre)
+      if (erro) { alert(erro); return }
+    }
     setLoading(true)
     const idsOriginais = (o.os_servicos || []).filter(i => !i.devolvido).map(i => i.id)
     const idsRestantes = itensEdit.filter(i => i.id).map(i => i.id)
@@ -310,18 +302,11 @@ function OSCard({ o, onEditado, veiculo }) {
       km_entrada: kmEdit ? parseInt(kmEdit) : null,
       observacoes: obsEdit || null,
       valor_total: novoTotal,
-      forma_pagamento: formaPagEdit || null,
       aberta_em: dataAbertaEdit ? new Date(dataAbertaEdit + 'T12:00:00').toISOString() : o.aberta_em,
     }
     if (o.status === 'concluida') {
       update.concluida_em = dataConclusaoEdit ? new Date(dataConclusaoEdit + 'T12:00:00').toISOString() : o.concluida_em
-      if (formaPagEdit === 'parcelado' || formaPagEdit === 'entrada_parcelado') {
-        update.parcelas = parcelasEdit ? parseInt(parcelasEdit) : null
-        update.valor_entrada = valorEntradaEdit ? parseValor(valorEntradaEdit) : null
-      } else {
-        update.parcelas = null
-        update.valor_entrada = null
-      }
+      if (!semPgto) Object.assign(update, camposPgto(linhasPgtoEdit, novoTotal))
     }
     await supabase.from('ordens_servico').update(update).eq('id', o.id)
     setEditando(false)
@@ -383,27 +368,10 @@ function OSCard({ o, onEditado, veiculo }) {
       {o.status === 'concluida' && (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-            <div>
-              <Label>Forma de Pagamento</Label>
-              <select style={sSel} value={formaPagEdit} onChange={e => { setFormaPagEdit(e.target.value); setParcelasEdit(''); setValorEntradaEdit('') }}>
-                <option value="">Selecione</option>
-                <option value="dinheiro">Dinheiro</option>
-                <option value="pix">Pix</option>
-                <option value="debito">Débito</option>
-                <option value="credito">Crédito</option>
-                <option value="parcelado">Parcelado</option>
-                <option value="entrada_parcelado">Entrada + Parcelado</option>
-              </select>
-            </div>
             <div><Label>Valor Total</Label><div style={{ padding: '9px 0', fontFamily: 'Syne, sans-serif', fontWeight: 700, fontSize: '18px', color: 'var(--success)' }}>R$ {formatValor(itensEdit.reduce((acc, i) => acc + (i.quantidade || 1) * (i.preco_cobrado || 0), 0))}</div></div>
             <div><Label>Data de Conclusão</Label><Input type="date" value={dataConclusaoEdit} onChange={e => setDataConclusaoEdit(e.target.value)} /></div>
           </div>
-          {(formaPagEdit === 'parcelado' || formaPagEdit === 'entrada_parcelado') && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
-              {formaPagEdit === 'entrada_parcelado' && <div><Label>Valor de Entrada (R$)</Label><Input type="text" inputMode="decimal" value={valorEntradaEdit} onChange={e => setValorEntradaEdit(e.target.value)} onBlur={e => setValorEntradaEdit(formatValor(e.target.value))} placeholder="0,00" /></div>}
-              <div><Label>Nº de Parcelas</Label><Input type="number" value={parcelasEdit} onChange={e => setParcelasEdit(e.target.value)} placeholder="Ex: 3" min="2" /></div>
-            </div>
-          )}
+          <PagamentosEditor linhas={linhasPgtoEdit} onChange={setLinhasPgtoEdit} total={itensEdit.reduce((acc, i) => acc + (i.quantidade || 1) * (i.preco_cobrado || 0), 0)} />
         </>
       )}
 
@@ -532,19 +500,11 @@ function OSCard({ o, onEditado, veiculo }) {
 
       {(o.forma_pagamento || o.observacoes) && (
         <div style={{ marginTop: '10px', display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-          {o.forma_pagamento && (() => {
-            const totalNum = parseFloat(o.valor_total || 0)
-            const entradaNum = parseFloat(o.valor_entrada || 0)
-            const parcNum = parseInt(o.parcelas || 0)
-            const valorParcela = parcNum > 0 ? (totalNum - entradaNum) / parcNum : 0
-            return (
-              <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>
-                Pagamento: {pagamentoLabel[o.forma_pagamento] || o.forma_pagamento}
-                {o.valor_entrada ? ` · Entrada R$ ${formatValor(entradaNum)}` : ''}
-                {parcNum ? ` · ${parcNum}x de R$ ${formatValor(valorParcela)}` : ''}
-              </span>
-            )
-          })()}
+          {o.forma_pagamento && (
+            <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>
+              Pagamento: {descricaoPagamento(o)}
+            </span>
+          )}
           {o.observacoes && (
             <span style={{ fontSize: '12px', color: 'var(--text-faint)' }}>Obs: {o.observacoes}</span>
           )}

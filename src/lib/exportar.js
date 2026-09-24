@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx'
 import { supabase } from './supabase'
+import { descricaoPagamento } from './utils'
 
 export async function exportarPlanilha() {
   // Clientes
@@ -57,7 +58,7 @@ export async function exportarPlanilha() {
     'Placa': o.veiculos?.placa || '',
     'Serviços': (o.os_servicos || []).filter(s => !s.devolvido).map(s => s.servicos?.nome).join(', '),
     'Valor Total': parseFloat(o.valor_total || 0).toFixed(2),
-    'Forma Pagamento': o.forma_pagamento || '',
+    'Forma Pagamento': descricaoPagamento(o),
     'KM Entrada': o.km_entrada || '',
     'Concluída em': o.concluida_em ? new Date(o.concluida_em).toLocaleDateString('pt-BR') : ''
   }))

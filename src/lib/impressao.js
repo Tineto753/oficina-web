@@ -1,9 +1,5 @@
-import { formatValor } from './utils'
+import { formatValor, descricaoPagamento } from './utils'
 
-const LABEL_PGTO = {
-  dinheiro: 'Dinheiro', pix: 'Pix', debito: 'Débito', credito: 'Crédito',
-  parcelado: 'Parcelado', entrada_parcelado: 'Entrada + Parcelado',
-}
 const GRUPOS = [
   { key: 'servico',      label: 'Serviços'      },
   { key: 'peca',         label: 'Peças'          },
@@ -21,9 +17,7 @@ const GRUPOS = [
  * @param {number} [p.kmEntrada]
  * @param {Array}  p.itens         - os_servicos com servicos(nome, tipo_servico)
  * @param {number|string} p.total
- * @param {string} [p.formaPagamento]
- * @param {number} [p.parcelas]
- * @param {number} [p.valorEntrada]
+ * @param {Object} [p.pagamento]     - colunas de pagamento da OS (pagamentos, forma_pagamento, parcelas...)
  * @param {string} [p.observacoes]
  * @param {string} [p.validadeOrcamento] - ISO
  */
@@ -43,14 +37,7 @@ export function gerarHtmlOS(p) {
     return `<tr class="grupo-label"><td colspan="3">${g.label}</td></tr>${rows}`
   }).join('')
 
-  const parcNum      = parseInt(p.parcelas || 0)
-  const entradaNum   = parseFloat(p.valorEntrada || 0)
-  const totalNum     = parseFloat(p.total || 0)
-  const valorParcela = parcNum > 0 ? (totalNum - entradaNum) / parcNum : 0
-
-  const pgtoStr = p.formaPagamento
-    ? `${LABEL_PGTO[p.formaPagamento] || p.formaPagamento}${p.valorEntrada ? ` · Entrada R$ ${fmt(p.valorEntrada)}` : ''}${parcNum ? ` · ${parcNum}× de R$ ${fmt(valorParcela)}` : ''}`
-    : ''
+  const pgtoStr = descricaoPagamento({ ...p.pagamento, valor_total: p.total })
 
   const rodapeHtml = (pgtoStr || p.observacoes) ? `
     <div class="rodape">

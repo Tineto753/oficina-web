@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
-import { parseValor, formatValor } from '../lib/utils'
+import { parseValor, formatValor, novaLinhaPgto, validarPgto, camposPgto } from '../lib/utils'
 import { gerarHtmlOS } from '../lib/impressao'
 import NovoServicoModal from '../components/NovoServicoModal'
+import PagamentosEditor from '../components/PagamentosEditor'
 
 function toLocalInput(iso) {
   if (!iso) return ''
@@ -279,9 +280,8 @@ function OSCard({ os, onAtualizado, autoOpen }) {
   const [open, setOpen] = useState(false)
   const autoOpenedRef = useRef(false)
   const [itens, setItens] = useState([])
-  const [formaPagamento, setFormaPagamento] = useState('')
-  const [parcelas, setParcelas] = useState('')
-  const [valorEntrada, setValorEntrada] = useState('')
+  // Formas de pagamento da conclusão: [{ forma, valor, parcelas }] — ver PagamentosEditor
+  const [linhasPgto, setLinhasPgto] = useState([novaLinhaPgto()])
   const [kmEntrada, setKmEntrada] = useState('')
   const [dataAberta, setDataAberta] = useState('')
   const [dataConclusao, setDataConclusao] = useState(new Date().toISOString().split('T')[0])
@@ -314,6 +314,7 @@ function OSCard({ os, onAtualizado, autoOpen }) {
       fetchItens()
       setDataAberta(os.aberta_em ? os.aberta_em.split('T')[0] : new Date().toISOString().split('T')[0])
       setDataConclusao(new Date().toISOString().split('T')[0])
+      setLinhasPgto([novaLinhaPgto()])
       setEditando(false)
     }
   }, [open])
@@ -486,22 +487,23 @@ function OSCard({ os, onAtualizado, autoOpen }) {
       .eq('id', os.id)
   }
 
+  // Valida as formas de pagamento antes de concluir. Retorna false (e alerta) se inválidas.
+  function validarPagamento() {
+    const erro = validarPgto(linhasPgto, valorTotal)
+    if (erro) { alert(erro); return false }
+    return true
+  }
+
   async function handleConcluir() {
-    if (!formaPagamento) { alert('Informe a forma de pagamento'); return }
+    if (!validarPagamento()) return
     setLoading(true)
     const agora = new Date().toISOString()
-    const extra = {}
-    if (formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') {
-      if (parcelas) extra.parcelas = parseInt(parcelas)
-      if (valorEntrada) extra.valor_entrada = parseValor(valorEntrada)
-    }
     const { error } = await supabase.from('ordens_servico').update({
       status: 'concluida',
-      forma_pagamento: formaPagamento,
       valor_total: valorTotal,
       pago_em: agora,
       concluida_em: new Date(dataConclusao + 'T12:00:00').toISOString(),
-      ...extra
+      ...camposPgto(linhasPgto, valorTotal)
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
     await baixarEstoque()
@@ -547,25 +549,20 @@ function OSCard({ os, onAtualizado, autoOpen }) {
   }
 
   async function handleConcluirEImprimir() {
-    if (!formaPagamento) { alert('Informe a forma de pagamento'); return }
+    if (!validarPagamento()) return
     setLoading(true)
     const agora = new Date().toISOString()
-    const extra = {}
-    if (formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') {
-      if (parcelas) extra.parcelas = parseInt(parcelas)
-      if (valorEntrada) extra.valor_entrada = parseValor(valorEntrada)
-    }
+    const campos = camposPgto(linhasPgto, valorTotal)
     const { error } = await supabase.from('ordens_servico').update({
       status: 'concluida',
-      forma_pagamento: formaPagamento,
       valor_total: valorTotal,
       pago_em: agora,
       concluida_em: new Date(dataConclusao + 'T12:00:00').toISOString(),
-      ...extra
+      ...campos
     }).eq('id', os.id)
     if (error) { alert('Erro: ' + error.message); setLoading(false); return }
     await baixarEstoque()
-    imprimir({ formaPagamento, valorTotal, parcelas: extra.parcelas, valorEntrada: extra.valor_entrada })
+    imprimir({ valorTotal, pagamento: campos })
     setOpen(false)
     onAtualizado()
   }
@@ -580,10 +577,8 @@ function OSCard({ os, onAtualizado, autoOpen }) {
       dataSolicitada:   os.data_solicitada,
       kmEntrada:        os.km_entrada,
       itens,
-      total:            override.valorTotal    ?? os.valor_total,
-      formaPagamento:   override.formaPagamento ?? os.forma_pagamento,
-      parcelas:         override.parcelas       ?? os.parcelas,
-      valorEntrada:     override.valorEntrada   ?? os.valor_entrada,
+      total:            override.valorTotal     ?? os.valor_total,
+      pagamento:        override.pagamento      ?? os,
       observacoes:      os.observacoes,
       validadeOrcamento: os.validade_orcamento,
     }))
@@ -944,16 +939,8 @@ function OSCard({ os, onAtualizado, autoOpen }) {
             <p style={{ fontFamily: 'Syne, sans-serif', fontWeight: 600, fontSize: '13px', color: 'var(--text-muted)', marginBottom: '10px', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Concluir OS</p>
             <div style={{ ...S.grid2, marginBottom: '14px' }}>
               <div>
-                <Label>Forma de Pagamento</Label>
-                <select style={S.select} value={formaPagamento} onChange={e => { setFormaPagamento(e.target.value); setParcelas(''); setValorEntrada('') }}>
-                  <option value="">Selecione</option>
-                  <option value="dinheiro">Dinheiro</option>
-                  <option value="pix">Pix</option>
-                  <option value="debito">Débito</option>
-                  <option value="credito">Crédito</option>
-                  <option value="parcelado">Parcelado</option>
-                  <option value="entrada_parcelado">Entrada + Parcelado</option>
-                </select>
+                <Label>Data de Conclusão</Label>
+                <Input type="date" value={dataConclusao} onChange={e => setDataConclusao(e.target.value)} />
               </div>
               <div style={{ textAlign: 'right' }}>
                 <Label>Valor Total</Label>
@@ -961,25 +948,8 @@ function OSCard({ os, onAtualizado, autoOpen }) {
                   R$ {formatValor(valorTotal)}
                 </div>
               </div>
-              <div>
-                <Label>Data de Conclusão</Label>
-                <Input type="date" value={dataConclusao} onChange={e => setDataConclusao(e.target.value)} />
-              </div>
             </div>
-            {(formaPagamento === 'parcelado' || formaPagamento === 'entrada_parcelado') && (
-              <div style={{ ...S.grid2, marginBottom: '14px' }}>
-                {formaPagamento === 'entrada_parcelado' && (
-                  <div>
-                    <Label>Valor de Entrada (R$)</Label>
-                    <Input type="text" inputMode="decimal" value={valorEntrada} onChange={e => setValorEntrada(e.target.value)} onBlur={e => setValorEntrada(formatValor(e.target.value))} placeholder="0,00" />
-                  </div>
-                )}
-                <div>
-                  <Label>Nº de Parcelas</Label>
-                  <Input type="number" value={parcelas} onChange={e => setParcelas(e.target.value)} placeholder="Ex: 3" min="2" />
-                </div>
-              </div>
-            )}
+            <PagamentosEditor linhas={linhasPgto} onChange={setLinhasPgto} total={valorTotal} />
             <div style={{ display: 'flex', gap: '10px' }}>
               <button style={{ ...S.btnPrimary, flex: 1, padding: '11px' }} onClick={handleConcluir} disabled={loading}>
                 Concluir OS
